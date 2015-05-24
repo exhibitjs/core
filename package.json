@@ -1,0 +1,46 @@
+{
+  "name": "exhibit-core",
+  "description": "Engine for Exhibit",
+  "version": "0.0.0",
+  "author": "Callum Locke",
+  "bugs": {
+    "url": "https://github.com/exhibitjs/exhibit/issues"
+  },
+  "dependencies": {
+    "babel-runtime": "^5.4.7",
+    "bluebird": "^2.9.25",
+    "in-place": "^1.1.0",
+    "lodash": "^3.9.1",
+    "multiform": "^0.1.0",
+    "virtual-folder": "^0.2.2"
+  },
+  "devDependencies": {
+    "babel-eslint": "^3.1.8",
+    "chalk": "^1.0.0",
+    "clear-trace": "^0.0.4",
+    "eslint": "^0.21.2",
+    "glob": "^5.0.9",
+    "multiform-build": "^0.1.0",
+    "source-map-support": "^0.2.10"
+  },
+  "files": [
+    "src",
+    "dist-0",
+    "dist-1",
+    "index.js",
+    "multiform.json"
+  ],
+  "homepage": "https://github.com/exhibitjs/core",
+  "license": "MIT",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/exhibitjs/core"
+  },
+  "scripts": {
+    "prepublish": "eslint . && multiform",
+    "pretest": "multiform",
+    "test": "node test.js",
+    "watch": "nodemon --exec 'npm run test' --watch src --watch index.js --watch test.js --watch package.json --watch multiform.json"
+  }
+}
