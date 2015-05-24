@@ -19,11 +19,11 @@ engine.batch(files).then(results => {
 
 
 <!-- badge URLs -->
-[npm-url]: https://npmjs.org/package/multiform-build
-[npm-image]: https://img.shields.io/npm/v/multiform-build.svg?style=flat-square
+[npm-url]: https://npmjs.org/package/exhibit-js
+[npm-image]: https://img.shields.io/npm/v/exhibit-js.svg?style=flat-square
 
-[travis-url]: http://travis-ci.org/callumlocke/multiform-build
-[travis-image]: https://img.shields.io/travis/callumlocke/multiform-build.svg?style=flat-square
+[travis-url]: http://travis-ci.org/exhibitjs/core
+[travis-image]: https://img.shields.io/travis/exhibitjs/core.svg?style=flat-square
 
-[depstat-url]: https://david-dm.org/callumlocke/multiform-build
-[depstat-image]: https://img.shields.io/david/callumlocke/virtual-folder.svg?style=flat-square
+[depstat-url]: https://david-dm.org/exhibitjs/core
+[depstat-image]: https://img.shields.io/david/exhibitjs/core.svg?style=flat-square
