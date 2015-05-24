@@ -1,9 +1,9 @@
-import isArray from 'lodash/lang/isArray';
 import isFunction from 'lodash/lang/isFunction';
 import identity from 'lodash/utility/identity';
 import isObject from 'lodash/lang/isObject';
-import Phase from './phase';
 import VirtualFolder from 'virtual-folder';
+import isArray from 'lodash/lang/isArray';
+import Phase from './phase';
 
 const BATCH_RUNNING       = Symbol();
 const FINAL_OUTBOX        = Symbol();

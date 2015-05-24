@@ -1,7 +1,7 @@
 import isFunction from 'lodash/lang/isFunction';
 import identity from 'lodash/utility/identity';
 import isString from 'lodash/lang/isString';
-import inPlace from 'in-place';
+import {filter} from 'in-place';
 import Promise from 'bluebird';
 
 const PREVIOUS = Symbol();
@@ -15,9 +15,9 @@ export default class Phase {
     console.assert(outbox instanceof require('virtual-folder'));
     console.assert(isFunction(fn));
 
+    this[PREVIOUS] = previous;
     this[OUTBOX] = outbox;
     this[FN] = fn;
-    this[PREVIOUS] = previous;
   }
 
 
@@ -52,6 +52,6 @@ export default class Phase {
       });
     });
 
-    return inPlace.filter(changes, identity);
+    return filter(changes, identity);
   }
 }
