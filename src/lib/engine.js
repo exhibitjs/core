@@ -1,5 +1,3 @@
-'use strict';
-
 import isArray from 'lodash/lang/isArray';
 import isFunction from 'lodash/lang/isFunction';
 import identity from 'lodash/utility/identity';

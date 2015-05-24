@@ -1,6 +1,5 @@
-'use strict';
-
 import isFunction from 'lodash/lang/isFunction';
+import identity from 'lodash/utility/identity';
 import isString from 'lodash/lang/isString';
 import inPlace from 'in-place';
 import Promise from 'bluebird';
@@ -31,12 +30,13 @@ export default class Phase {
 
 
   /**
-   * Processes the given file objects using the phase's 'fn' function, and returns any changes.
+   * Processes the given file objects using the phase's 'fn' function, and
+   * returns any changes as an array, or `null`.
    */
-  async execute(inFiles) {
+  async execute(files) {
     const phase = this;
 
-    const results = await Promise.resolve(phase[FN].call({ read: (fn) => phase[PREVIOUS].read(fn) }, inFiles));
+    const results = await Promise.resolve(phase[FN].call({ read: (fn) => phase[PREVIOUS].read(fn) }, files));
 
     if (!results) return null;
 
@@ -52,6 +52,6 @@ export default class Phase {
       });
     });
 
-    return inPlace.filter(changes, change => change);
+    return inPlace.filter(changes, identity);
   }
 }
