@@ -2,14 +2,17 @@
 
 [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][depstat-image]][depstat-url]
 
+A library for incrementally building files in batches. This is the engine at the core of [Exhibit](https://github.com/exhibitjs/exhibit).
+
+
 ## usage
 
 ```js
 import Engine from 'exhibit-core';
 
-const engine = new Engine({phases});
+const engine = new Engine({plugins, importer});
 
-engine.batch(files).then(results => {
+engine.batch(changedInternalPaths, changedExternalPaths).then(results => {
   // e.g. save results to disk
 
 }).catch(err => console.error(err));

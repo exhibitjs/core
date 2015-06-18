@@ -1,1 +1,1 @@
-module.exports = require('multiform').load('lib/engine');
+module.exports = require('multiform').load('lib');

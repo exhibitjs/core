@@ -1,104 +1,127 @@
 import Promise from 'bluebird';
-import Engine from '../lib/engine';
+import {Engine} from '../lib';
+import chalk from 'chalk';
+
 
 export default async function engineTest() {
   const engine = new Engine({
-    phases: [
+    base: '/some/imaginary/path',
+
+    verbose: true,
+
+    importMissingFile: function () {
+      fuck();
+    },
+
+    plugins: [
       // pass all changes straight through
-      (files) => {
-        return files;
+      function doNothing(path, contents) {
+        console.log('plugin 1:', path, JSON.stringify(contents.toString().substring(0, 20)));
+        const results = {};
+        results[path] = contents;
+        return results;
       },
 
       // asynchronously filter out .txt files
-      (files) => {
+      function filterOutBadExtensions(path, contents) {
+        console.log('plugin 2:', path, JSON.stringify(contents.toString().substring(0, 20)));
+        // throw new Error('fuck');
         return Promise.delay(200).then(() => {
-          return files.filter(file => !/\.txt$/.test(file.filename));
+          if (/\.(txt|css|html)$/.test(path)) {
+            const results = {};
+            results[path] = contents;
+            return results;
+          }
         });
       },
 
-      // read in a file that wasn't there
+      // add a .map file for every file
       // TODO
 
       // asynchronously modify files
-      async (files) => {
-        await Promise.delay(100);
+      function appendExtra(path, contents) {
+        return (async function () {
+          console.log('plugin 3:', path, JSON.stringify(contents.toString().substring(0, 20)));
+          await Promise.delay(100);
 
-        return files.map(file => {
-          return Promise.delay(50).then(() => {
-            if (file.type === 'delete') return file;
-            return {
-              filename: file.filename,
-              contents: file.contents + '\n\n<extra>',
-            };
-          });
-        });
+          const results = {};
+          results[path] = contents + '\n\n<extra>';
+          return results;
+        })();
       },
 
-      // add an extra file
-      (files) => {
-        return files.concat([
-          {
-            filename: 'extra.txt',
-            contents: 'added dynamically',
-          },
-        ]);
-      },
+      // // add an extra file
+      // (path, contents) => {
+      //   return files.concat([
+      //     {
+      //       path: 'extra.txt',
+      //       contents: 'added dynamically',
+      //     },
+      //   ]);
+      // },
     ],
   });
 
   // run a batch
-  const inFiles = [
+  const files = [
     {
-      filename: 'foo.txt',
+      path: 'foo.txt',
       contents: 'foo foo foo',
     },
     {
-      filename: 'bar.html',
+      path: 'bar.html',
       contents: 'bar bar bar',
     },
     {
-      filename: 'one.css',
+      path: 'one.css',
       contents: new Buffer('one one one'),
     },
   ];
 
-  const outFiles = await engine.batch(inFiles);
+  console.log(chalk.magenta('batch 1'));
+  const outFiles = await engine.batch(files);
 
   console.log('OUTFILES1', outFiles.map(file => {
-    return file.filename + ' ' + file.contents;
+    return file.path + ' ' + file.contents;
   }));
 
+  console.log(chalk.magenta('batch 2'));
   const outFiles2 = await engine.batch([
     {
-      filename: 'foo.txt',
+      path: 'foo.txt',
       contents: 'foo foo foo',
     },
     {
-      filename: 'bar.html',
+      path: 'bar.html',
       contents: 'bar bar bard',
     },
     {
-      filename: 'one.css',
+      path: 'one.css',
       contents: 'one one one',
+    },
+    {
+      path: 'notallowed.bum',
+      contents: 'extension is bad',
     },
   ]);
 
   console.log('OUTFILES 2', outFiles2.map(file => {
-    return file.filename + ' ' + file.contents;
+    return file.path + ' ' + file.contents;
   }));
 
+  console.log(chalk.magenta('batch 3'));
   const outFiles3 = await engine.batch([
     {
-      filename: 'one.css',
+      path: 'one.css',
       contents: 'changeddddd',
     },
     {
-      filename: 'bar.html',
+      path: 'bar.html',
       contents: null,
     },
   ]);
 
   console.log('OUTFILES 3', outFiles3.map(file => {
-    return file.filename + ' ' + file.contents;
+    return file.path + ' ' + file.contents;
   }));
 }

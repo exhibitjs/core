@@ -1,12 +1,11 @@
-'use strict';
-
 import clearTrace from 'clear-trace';
 import Promise from 'bluebird';
 import chalk from 'chalk';
 import path from 'path';
 
-require('source-map-support').install();
+// require('source-map-support').install();
 Promise.longStackTraces();
+Promise.onPossiblyUnhandledRejection(error => { throw error; }); // not sure if necessary
 
 const glob = Promise.promisify(require('glob'));
 const cwd = process.cwd();

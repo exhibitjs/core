@@ -7,26 +7,32 @@
     "url": "https://github.com/exhibitjs/exhibit/issues"
   },
   "dependencies": {
-    "babel-runtime": "^5.4.7",
-    "bluebird": "^2.9.25",
+    "babel-runtime": "^5.5.8",
+    "bluebird": "^2.9.30",
+    "chalk": "^1.0.0",
+    "cli-color": "^1.0.0",
+    "decamelize": "^1.0.0",
+    "decorate-this": "^0.5.0",
+    "graceful-fs": "^3.0.8",
+    "immutable": "^3.7.3",
     "in-place": "^1.1.0",
-    "lodash": "^3.9.1",
-    "multiform": "^0.1.0",
-    "virtual-folder": "^0.2.2"
+    "is-absolute": "^0.1.7",
+    "lodash": "^3.9.3",
+    "minimatch": "^2.0.8",
+    "subdir": "0.0.3",
+    "virtual-folder": "^0.5.1"
   },
   "devDependencies": {
-    "babel-eslint": "^3.1.8",
-    "chalk": "^1.0.0",
+    "babel-eslint": "^3.1.15",
     "clear-trace": "^0.0.4",
-    "eslint": "^0.21.2",
-    "glob": "^5.0.9",
-    "multiform-build": "^0.1.0",
-    "source-map-support": "^0.2.10"
+    "eslint": "^0.23.0",
+    "glob": "^5.0.10",
+    "source-map-support": "^0.3.1"
   },
   "files": [
     "src",
-    "dist-0",
-    "dist-1",
+    "dist-0/lib",
+    "dist-1/lib",
     "index.js",
     "multiform.json"
   ],
@@ -42,5 +48,8 @@
     "pretest": "multiform",
     "test": "node test.js",
     "watch": "nodemon --exec 'npm run test' --watch src --watch index.js --watch test.js --watch package.json --watch multiform.json"
+  },
+  "engines": {
+    "node": ">=0.11"
   }
 }
