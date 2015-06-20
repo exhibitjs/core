@@ -14,7 +14,7 @@
     "decamelize": "^1.0.0",
     "decorate-this": "^0.5.0",
     "graceful-fs": "^3.0.8",
-    "immutable": "^3.7.3",
+    "immutable": "^3.7.4",
     "in-place": "^1.1.0",
     "is-absolute": "^0.1.7",
     "lodash": "^3.9.3",
@@ -23,7 +23,7 @@
     "virtual-folder": "^0.5.1"
   },
   "devDependencies": {
-    "babel-eslint": "^3.1.15",
+    "babel-eslint": "^3.1.17",
     "clear-trace": "^0.0.4",
     "eslint": "^0.23.0",
     "glob": "^5.0.10",
@@ -46,7 +46,7 @@
   "scripts": {
     "prepublish": "eslint . && multiform",
     "pretest": "multiform",
-    "test": "node test.js",
+    "test": "node index.js",
     "watch": "nodemon --exec 'npm run test' --watch src --watch index.js --watch test.js --watch package.json --watch multiform.json"
   },
   "engines": {

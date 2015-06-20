@@ -12,6 +12,8 @@
  * endColumn
  *
  * (Those four last properties are all integers starting from 1.)
+ *
+ * (the above is a plan, not implemented)
  */
 
 import {red, grey} from './colours';

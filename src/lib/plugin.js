@@ -1,3 +1,7 @@
+/**
+ * A harness for a plugin function.
+ */
+
 import {param, promises, returns, AnyOf, ArrayOf, Optional} from 'decorate-this';
 import {orange, grey, cyan, purple} from './colours';
 import {VirtualFolder} from 'virtual-folder';
@@ -5,6 +9,7 @@ import PluginContext from './plugin-context';
 import {resolve as resolvePath} from 'path';
 import isString from 'lodash/lang/isString';
 import isObject from 'lodash/lang/isObject';
+import isAbsolute from 'is-absolute';
 import JoinTable from './join-table';
 import {filter, map} from 'in-place';
 import {EventEmitter} from 'events';
@@ -36,7 +41,7 @@ export default class Plugin extends EventEmitter {
     previous: AnyOf(VirtualFolder, Plugin),
     outbox: VirtualFolder,
     // engine: Engine, // causes weird error
-  }, 'Options object')
+  })
 
   init ({fn, previous, outbox, engine, base}) {
     console.assert(engine instanceof Engine);
@@ -58,25 +63,23 @@ export default class Plugin extends EventEmitter {
    * Reads a file from this plugin's outbox.
    * (This method may be used by the next plugin.)
    */
-  @param(String, 'Relative file path')
+  @param(String, 'Absolute file path')
   @returns(Optional(Buffer), 'Either the contents (if any), or null if the path does not exist in this plugin\'s outbox')
 
   read(path) {
+    console.assert(isAbsolute(path));
     return this[OUTBOX].read(path);
   }
 
 
   /**
-   * Execute this plugin for a batch of changes.
+   * Executes this plugin for a batch of changes.
    */
   @param(Set/*Of(String)*/)
   @param(Set/*Of(String)*/)
   @promises(ArrayOf({path: String, contents: Optional(Buffer)}))
 
   async execute(changedInternalPaths, changedExternalPaths) {
-    // console.assert([...changedExternalPaths].every(isAbsolute), 'external paths should be absolute');
-    // console.assert([...changedInternalPaths].every(!isAbsolute), 'internal paths should be relative');
-
     if (this[EXECUTING]) throw new Error('Already executing plugin');
     this[EXECUTING] = true;
 
@@ -223,7 +226,7 @@ export default class Plugin extends EventEmitter {
             console.log(purple(`              ${importedPaths.size} imports`));
             for (let path of importedPaths) {
               if (subdir(this[BASE], path)) path = relative(this[BASE], path);
-              console.log(purple('                -> ') + grey(path));
+              console.log(purple('                <- ') + grey(path));
             }
           }
         }

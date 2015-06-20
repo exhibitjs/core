@@ -1,17 +1,17 @@
 /**
- * This class provides a limited `this` API for plugins.
+ * This class provides a limited `this` API for plugin functions.
  */
 
 import isString from 'lodash/lang/isString';
 import SourceError from './source-error';
-import {resolve} from 'path';
+import {promises} from 'decorate-this';
 import {EventEmitter} from 'events';
 import minimatch from 'minimatch';
 import Promise from 'bluebird';
+import {resolve} from 'path';
 import {map} from 'in-place';
 import subdir from 'subdir';
 import _ from 'lodash';
-import {promises} from 'decorate-this';
 
 const SOURCE = Symbol();
 const IMPORTATIONS = Symbol();
