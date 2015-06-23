@@ -1,8 +1,8 @@
 /**
- * Fast collection of pairs of strings (used for mapping many-to-many relations between file paths).
- *
- * API is similar to Set, except that `.add()` and `.remove()` both take two arguments, not one.
- *
+ * Class for small collections of pairs of strings, used for remembering
+ * many-to-many relationships between file paths. In this class the two sides
+ * are just known as 'lefts' and 'rights'; it is up to the caller to know what
+ * means what (e.g. lefts = importers and rights = importees).
  */
 
 import {param, returns} from 'decorate-this';
@@ -12,7 +12,7 @@ import {deleteIndex} from 'in-place';
 const PAIRS = Symbol();
 
 
-export default class JoinTable {
+export default class PathPairSet {
   constructor() {
     this[PAIRS] = [];
   }
@@ -20,7 +20,7 @@ export default class JoinTable {
 
   @param(String)
   @param(String)
-  @returns(JoinTable)
+  @returns(PathPairSet)
   add(left, right) {
     const pairs = this[PAIRS];
 
@@ -39,7 +39,7 @@ export default class JoinTable {
 
   @param(String)
   @param(String)
-  @returns(JoinTable)
+  @returns(PathPairSet)
   remove(left, right) {
     const pairs = this[PAIRS];
 
@@ -105,7 +105,9 @@ export default class JoinTable {
   @param(String)
   @returns(Set)
   getAllRights() {
-    return new Set(this[PAIRS].map(([, right]) => right));
+    const set = new Set();
+    for (const [, right] of this[PAIRS]) set.add(right);
+    return set;
   }
 
 

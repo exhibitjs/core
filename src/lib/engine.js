@@ -1,21 +1,23 @@
 import {param, promises, ArrayOf} from 'decorate-this';
-import {magenta, grey} from './colours';
 import identity from 'lodash/utility/identity';
 import {VirtualFolder} from 'virtual-folder';
+import {magenta, grey} from './colours';
+import {EventEmitter} from 'events';
 import {filter} from 'in-place';
 import {relative} from 'path';
 import Plugin from './plugin';
 
-const BATCH_RUNNING = Symbol();
-const INITIAL_INBOX = Symbol();
-const FINAL_OUTBOX = Symbol();
-const NUM_PLUGINS = Symbol();
-const IMPORTER = Symbol();
-const PLUGINS = Symbol();
 const BASE = Symbol();
+const PLUGINS = Symbol();
+const IMPORTER = Symbol();
+const NUM_PLUGINS = Symbol();
+const FINAL_OUTBOX = Symbol();
+const INITIAL_INBOX = Symbol();
+const BATCH_RUNNING = Symbol();
 
-export default class Engine {
+export default class Engine extends EventEmitter {
   constructor(options) {
+    super();
     this.init(options);
   }
 
@@ -117,9 +119,24 @@ export default class Engine {
         );
       }
 
+      // bubble up errors from plugins
+      const handleError = error => {
+        // console.log('handling error at engine level', error);
+        this.emit('error', error);
+      };
+      plugin.on('error', handleError); // handle emitted errors
+
       // each plugin gets 'changes' from the previous one, but all plugins get
       // the same changedExternalPaths array.
-      changes = await plugin.execute(new Set(changes.map(c => c.path)), changedExternalPaths);
+      try {
+        changes = await plugin.execute(new Set(changes.map(c => c.path)), changedExternalPaths);
+      }
+      catch (error) {
+        handleError(error); // handle thrown errors or rejections
+      }
+
+      plugin.removeListener('error', handleError);
+
       if (!changes || !changes.length) break;
     }
 

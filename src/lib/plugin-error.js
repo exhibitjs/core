@@ -3,7 +3,7 @@
  */
 
 export default class PluginError extends Error {
-  constructor({message, pluginIndex, actionFilename, originalError = null}) {
+  constructor(message, {plugin, buildPath, originalError = null}) {
     super(message);
 
     // super(
@@ -12,10 +12,10 @@ export default class PluginError extends Error {
     // );
 
     Object.defineProperties(this, {
-      code: {value: 'PLUGIN_ERROR', writable: false},
-      pluginIndex: {value: pluginIndex, writable: false},
-      actionFilename: {value: actionFilename, writable: false},
-      originalError: {value: originalError, writable: false},
+      code: {value: 'PLUGIN_ERROR'},
+      plugin: {value: plugin},
+      buildPath: {value: buildPath},
+      originalError: {value: originalError},
     });
   }
 }

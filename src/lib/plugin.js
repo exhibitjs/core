@@ -9,8 +9,9 @@ import PluginContext from './plugin-context';
 import {resolve as resolvePath} from 'path';
 import isString from 'lodash/lang/isString';
 import isObject from 'lodash/lang/isObject';
+import PathPairSet from './path-pair-set';
+import PluginError from './plugin-error';
 import isAbsolute from 'is-absolute';
-import JoinTable from './join-table';
 import {filter, map} from 'in-place';
 import {EventEmitter} from 'events';
 import decamelize from 'decamelize';
@@ -19,14 +20,13 @@ import {relative} from 'path';
 import Engine from './engine';
 import subdir from 'subdir';
 
-const IMPORTATIONS = Symbol();
-const OUTPUTTINGS = Symbol();
-const EXECUTING = Symbol();
-const PREVIOUS = Symbol();
-const OUTBOX = Symbol();
-const ENGINE = Symbol();
-const BASE = Symbol();
 const FN = Symbol();
+const BASE = Symbol();
+const ENGINE = Symbol();
+const OUTBOX = Symbol();
+const PREVIOUS = Symbol();
+const OUTPUTTINGS = Symbol();
+const IMPORTATIONS = Symbol();
 
 
 export default class Plugin extends EventEmitter {
@@ -52,10 +52,8 @@ export default class Plugin extends EventEmitter {
     this[FN] = fn;
     this[BASE] = base;
 
-    this[EXECUTING] = false;
-
-    this[IMPORTATIONS] = new JoinTable(); // [buildPath, importPath]
-    this[OUTPUTTINGS] = new JoinTable(); // [buildPath, outputPath]
+    this[IMPORTATIONS] = new PathPairSet(); // [buildPath, importPath]
+    this[OUTPUTTINGS] = new PathPairSet(); // [buildPath, outputPath]
   }
 
 
@@ -80,8 +78,6 @@ export default class Plugin extends EventEmitter {
   @promises(ArrayOf({path: String, contents: Optional(Buffer)}))
 
   async execute(changedInternalPaths, changedExternalPaths) {
-    if (this[EXECUTING]) throw new Error('Already executing plugin');
-    this[EXECUTING] = true;
 
     if (this[ENGINE].verbose) {
       console.log(orange(`\n      ${changedInternalPaths.size} incoming internal paths`));
@@ -101,8 +97,8 @@ export default class Plugin extends EventEmitter {
     // get the old mappings, and start new ones
     const oldImportations = this[IMPORTATIONS];
     const oldOutputtings = this[OUTPUTTINGS];
-    const newImportations = new JoinTable();
-    const newOutputtings = new JoinTable();
+    const newImportations = new PathPairSet();
+    const newOutputtings = new PathPairSet();
 
     // make a set of files to (try to) build (this may include files that will turn out to have been deleted when we try to read them and they come back null)
     const buildPaths = (() => {
@@ -122,15 +118,6 @@ export default class Plugin extends EventEmitter {
 
       return set;
     })();
-
-    // if (this[ENGINE].verbose) {
-    //   console.log(orange(`\n    ${buildPaths.size} build paths`));
-    //   for (const path of buildPaths) {
-    //     console.log('      ' + grey(relative(this[BASE], path)));
-    //   }
-    // }
-
-    // console.log('buildPaths', buildPaths);
 
     // make an array to return at the end
     const finalResults = []; // [{path, contents}, ...]
@@ -159,31 +146,25 @@ export default class Plugin extends EventEmitter {
 
         // bubble any errors from the plugin function
         const handleError = originalError => {
-          console.error('\n\nERROR', originalError.message);
-          console.error(originalError);
+          // console.error('\n\nhandleError from plugin class!', originalError.message);
+          // console.error(originalError.stack);
 
-          // const error = new PluginError({
-          //   message: `Error from plugin ${this.name} building path: ${buildPath}`,
-          //   buildPath,
-          //   originalError,
-          // });
-          // this.emit('error', error);
+          const error = new PluginError(`Error from plugin ${this.name} building path: ${buildPath}`, {
+            plugin: this,
+            buildPath,
+            originalError,
+          });
+
+          this.emit('error', error);
         };
 
-        context.on('error', handleError);
-
-        // invocations[buildPath] = Promise.resolve().then(() => {
-        //   return this[FN].call(context, buildPath, contents);
-        // }, handleError);
+        context.on('error', handleError); // handle emitted errors
 
         contentsBefore[buildPath] = contents;
-        try {
-          invocations[buildPath] = this[FN].call(context, buildPath, contents);
-        }
-        catch (error) {
-          // console.log('CATCHDIS', error);
-          handleError(error);
-        }
+
+        invocations[buildPath] = Promise.resolve().then(() => {
+          return this[FN].call(context, buildPath, contents);
+        }).catch(handleError);
       }
       // else: this file got deleted; no action required - anything that was
       // previously output exclusively because of this path will get deleted
@@ -191,7 +172,14 @@ export default class Plugin extends EventEmitter {
     }
 
     // wait till they've all finished
-    const invocationResults = await Promise.props(invocations);
+    let invocationResults;
+    try {
+      invocationResults = await Promise.props(invocations);
+    }
+    catch (error) {
+      console.log('oops here', error);
+      throw error;
+    }
     // console.log('invocationResults', invocationResults);
 
     // add results to final results array
@@ -317,7 +305,6 @@ export default class Plugin extends EventEmitter {
     }
 
 
-    this[EXECUTING] = false;
     return finalResults;
   }
 
