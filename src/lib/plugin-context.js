@@ -2,9 +2,9 @@
  * This class provides a limited `this` API for plugin functions.
  */
 
+import {param, promises} from 'decorate-this';
 import isString from 'lodash/lang/isString';
 import SourceError from './source-error';
-import {promises} from 'decorate-this';
 import {EventEmitter} from 'events';
 import minimatch from 'minimatch';
 import Promise from 'bluebird';
@@ -33,6 +33,13 @@ export default class PluginContext extends EventEmitter {
 
     Object.defineProperty(this, 'base', {value: base});
   }
+
+
+  @param(String)
+  emit(...args) {
+    super.emit.apply(this, args);
+  }
+
 
 
   @promises({path: String, contents: Buffer})
