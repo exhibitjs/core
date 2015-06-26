@@ -246,6 +246,8 @@ export default class Plugin extends EventEmitter {
 
     // carry over any old outputtings where the buildPath is not in this batch's buildPaths set
     for (const [oldBuildPath, oldOutputPath] of oldOutputtings) {
+      console.assert(isString(oldBuildPath), 'left should be string, got ' + oldBuildPath);
+      console.assert(isString(oldOutputPath), 'right should be string, got ' + oldOutputPath);
       if (!buildPaths.has(oldBuildPath)) {
         // this one didn't get built this time. just carry over this outputting for this time
         newOutputtings.add(oldBuildPath, oldOutputPath);
