@@ -58,9 +58,11 @@ export default class PluginContext extends EventEmitter {
     for (const path of possiblePaths) {
       if (subdir(this.base, path)) {
         const contentsFromSource = this[SOURCE].read(path);
+        // add it regardless of whether we found it
+        this[IMPORTATIONS].add(this[BUILD_PATH], path);
+
         if (contentsFromSource) {
           // we found it; add the importation before returning
-          this[IMPORTATIONS].add(this[BUILD_PATH], path);
           return { contents: contentsFromSource, path };
         }
       }
@@ -70,6 +72,8 @@ export default class PluginContext extends EventEmitter {
     // ok, try all of the with the engine's importer (which comes from wrapper lib,
     // and will remap to load paths if it's an internal path, otherwise will just get from disk)
     for (const path of possiblePaths) {
+      this[IMPORTATIONS].add(this[BUILD_PATH], path);
+
       let result;
       try {
         result = await this[ENGINE].importMissingFile(path);
