@@ -21,8 +21,8 @@ engine.batch(files, changedExternalPaths).then(results => {
 ```
 
 <!-- badge URLs -->
-[npm-url]: https://npmjs.org/package/exhibit-js
-[npm-image]: https://img.shields.io/npm/v/exhibit-js.svg?style=flat-square
+[npm-url]: https://npmjs.org/package/exhibit-core
+[npm-image]: https://img.shields.io/npm/v/exhibit-core.svg?style=flat-square
 
 [travis-url]: http://travis-ci.org/exhibitjs/core
 [travis-image]: https://img.shields.io/travis/exhibitjs/core.svg?style=flat-square
