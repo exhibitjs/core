@@ -22,6 +22,7 @@ import subdir from 'subdir';
 
 const FN = Symbol();
 const BASE = Symbol();
+const NAME = Symbol();
 const ENGINE = Symbol();
 const OUTBOX = Symbol();
 const PREVIOUS = Symbol();
@@ -126,7 +127,7 @@ export default class Plugin extends EventEmitter {
     const invocations = {}; // buildPath: promise
 
     // capture the incoming contents for each file in case a plugin returns true (meaning "pass straight through")
-    const contentsBefore = {};
+    // const contentsBefore = {};
 
     // (try to) load and build internal changed files, in parallel
     // (nb. some of these may actually have been deleted)
@@ -160,7 +161,7 @@ export default class Plugin extends EventEmitter {
 
         context.on('error', handleError); // handle emitted errors
 
-        contentsBefore[buildPath] = contents;
+        // contentsBefore[buildPath] = contents;
 
         invocations[buildPath] = Promise.resolve().then(() => {
           return this[FN].call(context, buildPath, contents);
@@ -196,17 +197,14 @@ export default class Plugin extends EventEmitter {
 
       let result = invocationResults[buildPath];
       if (result) {
-        // handle the special 'true' case, meaning 'pass straight through'
-        if (result === true) {
+        // handle plugin returning just a contents buffer/string
+        if (Buffer.isBuffer(result) || isString(result)) {
+          const newContents = result;
           result = {};
-          result[buildPath] = contentsBefore[buildPath];
-
-          // if (this[ENGINE].verbose) {
-          //   console.log(grey(`            (passed straight through)`));
-          // }
+          result[buildPath] = newContents;
         }
 
-        console.assert(isObject(result), 'Expected plugin to return an object');
+        console.assert(isObject(result), 'Plugin return value invalid');
 
         if (this[ENGINE].verbose) {
           const importedPaths = newImportations.getRightsFor(buildPath);
@@ -228,7 +226,7 @@ export default class Plugin extends EventEmitter {
         for (const path of outputPaths) {
           let contents = result[path];
           if (isString(contents)) contents = new Buffer(contents);
-          else console.assert(Buffer.isBuffer(contents), `Expected value for path "${path}" in plugin result object to be string or buffer; got: ` + contents);
+          else console.assert(Buffer.isBuffer(contents), `Expected value for path "${path}" in ${this.name} result object to be string or buffer; got: ` + contents);
 
           const resolvedResultPath = resolvePath(this[BASE], path);
           newOutputtings.add(buildPath, resolvedResultPath);
@@ -312,7 +310,16 @@ export default class Plugin extends EventEmitter {
 
 
   get name() {
-    if (this[FN].name) return decamelize(this[FN].name, '-');
-    else return '[anonymous plugin]';
+    if (!this[NAME]) {
+      if (this[FN].name) {
+        this[NAME] = decamelize(this[FN].name, '-');
+        if (this[NAME].substring(0, 8) === 'exhibit-') {
+          this[NAME] = this[NAME].substring(8);
+        }
+      }
+      else this[NAME] = '[anonymous plugin]';
+    }
+
+    return this[NAME];
   }
 }

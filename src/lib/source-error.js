@@ -16,7 +16,7 @@
  * (the above is a plan, not implemented)
  */
 
-import {red, grey} from './colours';
+import {red, yellow, grey} from './colours';
 
 const spaces = count => {
   return new Array(count).join(' ');
@@ -24,13 +24,14 @@ const spaces = count => {
 
 
 export default class SourceError extends Error {
-  constructor({message, path, contents, line, column, endLine, endColumn, maxLines = 8}) {
+  constructor({message, warning, path, contents, line, column, endLine, endColumn, maxLines = 8}) {
     super(message);
 
     define(this, {
       code: 'SOURCE_ERROR',
       message, path, contents, line,
       column, endLine, endColumn, maxLines,
+      warning,
     });
   }
 
@@ -79,7 +80,10 @@ export default class SourceError extends Error {
       // add a line to show column of error, if provided
       if (this.column != null) {
         digitGap = spaces(mostDigits);
-        report.push(digitGap + spaces(this.column + 5) + red('↑'));
+        report.push(
+          digitGap + spaces(this.column + 5) +
+          (this.warning ? yellow : red)('↑')
+        );
       }
       else {
         report.push(''); // blank line for consistent look

@@ -6,11 +6,6 @@ export default class PluginError extends Error {
   constructor(message, {plugin, buildPath, originalError = null}) {
     super(message);
 
-    // super(
-    //   `${message} from plugin ${pluginIndex + 1} of ${numPlugins} (${plugin.name || 'anonymous'})` +
-    //   ` when processing instruction: ${actionFile.type} ${actionFile.filename}`
-    // );
-
     Object.defineProperties(this, {
       code: {value: 'PLUGIN_ERROR'},
       plugin: {value: plugin},
