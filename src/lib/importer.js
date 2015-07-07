@@ -11,8 +11,8 @@ export default class Importer extends Plugin {
     super(fn);
   }
 
-  @param(String)
-  @param(ArrayOf(String))
+  // @param(String)
+  // @param(ArrayOf(String))
   async execute(path, types) {
     return this.fn.call(this, path, types);
   }

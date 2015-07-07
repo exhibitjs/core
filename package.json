@@ -25,7 +25,7 @@
   },
   "devDependencies": {
     "babel-eslint": "^3.1.23",
-    "clear-trace": "^0.0.5",
+    "clear-trace": "^0.0.7",
     "eslint": "^0.24.0",
     "glob": "^5.0.13",
     "multiform-build": "^0.2.0",
