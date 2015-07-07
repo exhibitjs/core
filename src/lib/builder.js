@@ -17,7 +17,6 @@ import Promise from 'bluebird';
 import {relative} from 'path';
 import Engine from './engine';
 import Plugin from './plugin';
-import subdir from 'subdir';
 
 const BASE = Symbol();
 const ENGINE = Symbol();
@@ -41,7 +40,11 @@ export default class Builder extends Plugin {
     // engine: Engine, // causes weird error
   })
 
+<<<<<<< Updated upstream
   init ({fn, previous, outbox, engine, base}) {
+=======
+  init ({previous, outbox, engine, base}) {
+>>>>>>> Stashed changes
     console.assert(engine instanceof Engine);
 
     this[PREVIOUS] = previous;

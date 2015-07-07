@@ -3,7 +3,7 @@
  * limited `this.*` API for the builder function.
  */
 
-import {param, promises, AnyOf, ArrayOf, Optional} from 'decorate-this';
+import {param, promises} from 'decorate-this';
 import isString from 'lodash/lang/isString';
 import SourceError from './source-error';
 import {resolve, relative} from 'path';
@@ -11,7 +11,6 @@ import isAbsolute from 'is-absolute';
 import {EventEmitter} from 'events';
 import minimatch from 'minimatch';
 import Promise from 'bluebird';
-import {map} from 'in-place';
 import subdir from 'subdir';
 import _ from 'lodash';
 
@@ -19,8 +18,6 @@ const SOURCE = Symbol();
 const ENGINE = Symbol();
 const BUILD_PATH = Symbol();
 const IMPORTATIONS = Symbol();
-
-// const importerContext = { _, Promise, Set };
 
 
 export default class BuilderInvocation extends EventEmitter {

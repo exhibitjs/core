@@ -1,4 +1,4 @@
-import {param, promises, ArrayOf, Optional} from 'decorate-this';
+import {param, ArrayOf, Optional} from 'decorate-this';
 import identity from 'lodash/utility/identity';
 import {VirtualFolder} from 'virtual-folder';
 import {magenta, grey} from './colours';
