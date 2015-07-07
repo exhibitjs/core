@@ -1,7 +1,7 @@
 {
   "name": "exhibit-core",
   "description": "Engine for Exhibit",
-  "version": "0.0.6",
+  "version": "0.1.0",
   "author": "Callum Locke",
   "bugs": {
     "url": "https://github.com/exhibitjs/exhibit/issues"

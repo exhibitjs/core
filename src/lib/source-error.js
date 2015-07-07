@@ -1,5 +1,5 @@
 /**
- * Error class that plugins can elect to use to report an error in a source file. The point of this is to normalise the way errors get printed in the console.
+ * Error class that builders can elect to use to report an error in a source file. The point of this is to normalise the way errors get printed in the console.
  *
  * message - just the problem, no filename/line number etc.
  * filename
