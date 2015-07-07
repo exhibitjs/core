@@ -39,12 +39,7 @@ export default class Builder extends Plugin {
     outbox: VirtualFolder,
     // engine: Engine, // causes weird error
   })
-
-<<<<<<< Updated upstream
-  init ({fn, previous, outbox, engine, base}) {
-=======
   init ({previous, outbox, engine, base}) {
->>>>>>> Stashed changes
     console.assert(engine instanceof Engine);
 
     this[PREVIOUS] = previous;
