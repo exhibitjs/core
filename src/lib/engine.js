@@ -1,16 +1,16 @@
-import {param, promises, ArrayOf} from 'decorate-this';
+import {param, promises, ArrayOf, Optional} from 'decorate-this';
 import identity from 'lodash/utility/identity';
 import {VirtualFolder} from 'virtual-folder';
 import {magenta, grey} from './colours';
 import {EventEmitter} from 'events';
+import Importer from './importer';
 import {filter} from 'in-place';
+import Builder from './builder';
 import {relative} from 'path';
-import Plugin from './plugin';
 
 const BASE = Symbol();
-const PLUGINS = Symbol();
-const IMPORTER = Symbol();
-const NUM_PLUGINS = Symbol();
+const BUILDERS = Symbol();
+const NUM_BUILDERS = Symbol();
 const FINAL_OUTBOX = Symbol();
 const INITIAL_INBOX = Symbol();
 const BATCH_RUNNING = Symbol();
@@ -22,46 +22,53 @@ export default class Engine extends EventEmitter {
   }
 
   @param({
-    plugins: ArrayOf(Function),
-    importMissingFile: Function,
+    builders: Optional(ArrayOf(Function)),
+    importers: Optional(ArrayOf(Function)),
     base: String, // for deciding quickly if a path is 'internal' (needs to go through pipeline) or 'external' (can be pulled in straight from disk)
     verbose: Boolean,
   })
 
-  init({plugins, importMissingFile, base, verbose}) {
+  init({builders=[], importers=[], base, verbose}) {
     this[BATCH_RUNNING] = false;
     this[INITIAL_INBOX] = new VirtualFolder();
     this[FINAL_OUTBOX] = new VirtualFolder();
-    this[NUM_PLUGINS] = plugins ? plugins.length : 0;
-    this[IMPORTER] = importMissingFile;
+    this[NUM_BUILDERS] = builders ? builders.length : 0;
     this[BASE] = base;
-    this[PLUGINS] = [];
+    this[BUILDERS] = [];
 
-    Object.defineProperty(this, 'verbose', {value: !!verbose});
+    Object.defineProperties(this, {
+      verbose: {value: !!verbose},
+      importers: {value: importers.map(fn => {
+        return new Importer(fn);
+      })},
+    });
 
-    for (let i = 0; i < this[NUM_PLUGINS]; i++) {
-      const fn = plugins[i];
+    // console.log('ADDED IMPORTERS TO ENGINE', importers);
+
+    for (let i = 0; i < this[NUM_BUILDERS]; i++) {
+      const fn = builders[i];
       const isFirst = (i === 0);
-      const isLast = (i === plugins.length - 1);
+      const isLast = (i === builders.length - 1);
 
-      const previous = isFirst ? this[INITIAL_INBOX] : this[PLUGINS][i - 1];
+      const previous = isFirst ? this[INITIAL_INBOX] : this[BUILDERS][i - 1];
       const outbox = isLast ? this[FINAL_OUTBOX] : new VirtualFolder();
 
-      this[PLUGINS][i] = new Plugin({previous, outbox, fn, base, engine: this});
+      this[BUILDERS][i] = new Builder({previous, outbox, fn, base, engine: this});
     }
   }
 
 
-  /**
-   * Imports a file from outside the project (e.g. from a load path - but load path resolution will be
-   * handled outside of Core).
-   */
-  @param(String, 'A path to import (may be relative, in which case it could be gotten from load paths)');
-  @promises({path: String, contents: Buffer}, 'Resolved path and contents of imported file');
 
-  importMissingFile(path) {
-    return this[IMPORTER](path);
-  }
+  // /**
+  //  * Imports a file from outside the project (e.g. from a load path - but load path resolution will be
+  //  * handled outside of Core).
+  //  */
+  // @param(String, 'A path to import (may be relative, in which case it could be gotten from load paths)');
+  // @promises({path: String, contents: Buffer}, 'Resolved path and contents of imported file');
+
+  // importMissingFile(path) {
+  //   return this[IMPORTER](path);
+  // }
 
 
   /**
@@ -111,31 +118,31 @@ export default class Engine extends EventEmitter {
 
     changedExternalPaths = new Set(changedExternalPaths);
 
-    for (let i = 0; i < this[NUM_PLUGINS]; i++) {
-      const plugin = this[PLUGINS][i];
+    for (let i = 0; i < this[NUM_BUILDERS]; i++) {
+      const builder = this[BUILDERS][i];
       if (this.verbose) {
         console.log(
-          magenta(`\n  ${plugin.name} (plugin ${i + 1} of ${this[NUM_PLUGINS]})`)
+          magenta(`\n  ${builder.name} (builder ${i + 1} of ${this[NUM_BUILDERS]})`)
         );
       }
 
-      // bubble up errors from plugins
+      // bubble up errors from builders
       const handleError = error => {
         // console.log('handling error at engine level', error);
         this.emit('error', error);
       };
-      plugin.on('error', handleError); // handle emitted errors
+      builder.on('error', handleError); // handle emitted errors
 
-      // each plugin gets 'changes' from the previous one, but all plugins get
+      // each builder gets 'changes' from the previous one, but all builders get
       // the same changedExternalPaths array.
       try {
-        changes = await plugin.execute(new Set(changes.map(c => c.path)), changedExternalPaths);
+        changes = await builder.execute(new Set(changes.map(c => c.path)), changedExternalPaths);
       }
       catch (error) {
         handleError(error); // handle thrown errors or rejections
       }
 
-      plugin.removeListener('error', handleError);
+      builder.removeListener('error', handleError);
 
       if (!changes || !changes.length) break;
     }

@@ -10,7 +10,7 @@ A library for incrementally building files in batches. This is the engine at the
 ```js
 import Engine from 'exhibit-core';
 
-const engine = new Engine({plugins, importer});
+const engine = new Engine({builders, importers});
 
 engine.batch(files, changedExternalPaths).then(results => {
   // e.g. save results to disk
@@ -19,6 +19,12 @@ engine.batch(files, changedExternalPaths).then(results => {
 
 // (followed by further, incremental .batch() calls)
 ```
+
+### options
+
+- `builders` - array of builder functions
+- `importers` - array of importer functions
+
 
 <!-- badge URLs -->
 [npm-url]: https://npmjs.org/package/exhibit-core
