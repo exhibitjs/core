@@ -47,7 +47,7 @@
     "url": "https://github.com/exhibitjs/core"
   },
   "scripts": {
-    "prepublish": "eslint . && multiform",
+    "prepublish": "multiform",
     "pretest": "multiform",
     "test": "node index.js",
     "watch": "nodemon --exec 'npm run test' --watch src --watch index.js --watch test.js --watch package.json --watch multiform.json"
