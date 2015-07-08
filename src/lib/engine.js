@@ -43,17 +43,15 @@ export default class Engine extends EventEmitter {
       })},
     });
 
-    // console.log('ADDED IMPORTERS TO ENGINE', importers);
-
     for (let i = 0; i < this[NUM_BUILDERS]; i++) {
       const fn = builders[i];
       const isFirst = (i === 0);
       const isLast = (i === builders.length - 1);
 
-      const previous = isFirst ? this[INITIAL_INBOX] : this[BUILDERS][i - 1];
+      const inbox = isFirst ? this[INITIAL_INBOX] : this[BUILDERS][i - 1].outbox;
       const outbox = isLast ? this[FINAL_OUTBOX] : new VirtualFolder();
 
-      this[BUILDERS][i] = new Builder({previous, outbox, fn, base, engine: this});
+      this[BUILDERS][i] = new Builder({inbox, outbox, fn, base, engine: this});
     }
   }
 
@@ -128,7 +126,6 @@ export default class Engine extends EventEmitter {
 
       // bubble up errors from builders
       const handleError = error => {
-        // console.log('handling error at engine level', error);
         this.emit('error', error);
       };
       builder.on('error', handleError); // handle emitted errors

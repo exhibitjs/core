@@ -16,7 +16,7 @@
     "graceful-fs": "^4.1.2",
     "immutable": "^3.7.4",
     "in-place": "^1.1.0",
-    "is-absolute": "^0.2.0",
+    "is-absolute": "^0.2.1",
     "lodash": "^3.10.0",
     "minimatch": "^2.0.8",
     "multiform": "^0.1.0",
@@ -31,6 +31,9 @@
     "multiform-build": "^0.2.0",
     "nodemon": "^1.3.7",
     "source-map-support": "^0.3.2"
+  },
+  "engines": {
+    "node": ">=0.11"
   },
   "files": [
     "src",
@@ -51,8 +54,5 @@
     "pretest": "multiform",
     "test": "node index.js",
     "watch": "nodemon --exec 'npm run test' --watch src --watch index.js --watch test.js --watch package.json --watch multiform.json"
-  },
-  "engines": {
-    "node": ">=0.11"
   }
 }

@@ -20,8 +20,7 @@ import Plugin from './plugin';
 
 const BASE = Symbol();
 const ENGINE = Symbol();
-const OUTBOX = Symbol();
-const PREVIOUS = Symbol();
+const INBOX = Symbol();
 const OUTPUTTINGS = Symbol();
 const IMPORTATIONS = Symbol();
 
@@ -35,33 +34,21 @@ export default class Builder extends Plugin {
 
   @param({
     fn: Function,
-    previous: AnyOf(VirtualFolder, Builder),
+    inbox: VirtualFolder,
     outbox: VirtualFolder,
     // engine: Engine, // causes weird error
   })
-  init ({previous, outbox, engine, base}) {
+  init ({inbox, outbox, engine, base}) {
     console.assert(engine instanceof Engine);
 
-    this[PREVIOUS] = previous;
-    this[OUTBOX] = outbox;
+    this[INBOX] = inbox;
     this[ENGINE] = engine;
     this[BASE] = base;
 
     this[IMPORTATIONS] = new PathPairSet(); // [buildPath, importPath]
     this[OUTPUTTINGS] = new PathPairSet(); // [buildPath, outputPath]
-  }
 
-
-  /**
-   * Reads a file from this builder's outbox.
-   * (This method may be used by the next builder.)
-   */
-  @param(String, 'Absolute file path')
-  @returns(Optional(Buffer), 'Either the contents (if any), or null if the path does not exist in this builder\'s outbox')
-
-  read(path) {
-    console.assert(isAbsolute(path));
-    return this[OUTBOX].read(path);
+    Object.defineProperty(this, 'outbox', {value: outbox}); // because it needs to be accessed externally (everything else has symbol keys due to least privilege principle)
   }
 
 
@@ -121,12 +108,12 @@ export default class Builder extends Plugin {
     // (try to) load and build internal changed files, in parallel
     // (nb. some of these may actually have been deleted)
     for (const buildPath of buildPaths) {
-      const contents = this[PREVIOUS].read(buildPath);
+      const contents = this[INBOX].read(buildPath);
 
       if (contents) {
         const context = new BuilderInvocation({
           base: this[BASE],
-          source: this[PREVIOUS],
+          inbox: this[INBOX],
           importations: newImportations,
           buildPath,
           engine: this[ENGINE],
@@ -275,7 +262,7 @@ export default class Builder extends Plugin {
     filter(
       map(
         finalResults,
-        ({path, contents}) => this[OUTBOX].write(path, contents)
+        ({path, contents}) => this.outbox.write(path, contents)
       ),
       x => x
     );
