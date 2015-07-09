@@ -18,6 +18,7 @@ export default class Plugin extends EventEmitter {
     console.assert(isFunction(this.fn), 'should be function');
   }
 
+
   get name() {
     if (!this[NAME]) {
       if (this.fn.name) {

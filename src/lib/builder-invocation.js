@@ -58,6 +58,8 @@ export default class BuilderInvocation extends EventEmitter {
       throw new Error('importInternal cannot import a file outside the source directory');
     }
 
+    this[IMPORTATIONS].add(this[BUILD_PATH], resolve(this.base, path));
+
     const contents = this[INBOX].read(path);
 
     if (contents) {
@@ -67,7 +69,7 @@ export default class BuilderInvocation extends EventEmitter {
     if (false && this[INBOX].isDir(path)) { // TODO!!!
       const error = new Error('Is a directory: ' + path);
       error.code = 'EISDIR';
-      throw error; 
+      throw error;
     }
     else {
       const error = new Error('Not found: ' + path);
@@ -98,8 +100,14 @@ export default class BuilderInvocation extends EventEmitter {
       const result = await importer.execute(targetPath, types);
 
       if (result) {
-        if (result.accessed && !(result.accessed instanceof Set)) {
-          throw new Error(`importer's result.accessed should be a Set, if anything`);
+        if (result.accessed) {
+          if (!(result.accessed instanceof Set)) {
+            throw new Error(`importer's result.accessed should be a Set, if anything`);
+          }
+          else if (result.path && !result.accessed.has(result.path)) {
+            // this may be overdoing it.
+            throw new Error(`importer's result.accessed should at least contain the final resolved path`);
+          }
         }
 
         // record all the paths the importer tried to access (if any of these change in
