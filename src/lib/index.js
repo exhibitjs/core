@@ -3,7 +3,6 @@ export colours from './colours';
 export SourceError from './source-error';
 
 // also share a bunch of third party stuff with the wrapper lib
-export Immutable from 'immutable';
 export {VirtualFolder, Change} from 'virtual-folder';
 export subdir from 'subdir';
 export isAbsolute from 'is-absolute';
