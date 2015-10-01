@@ -3,18 +3,13 @@
  * limited `this.*` API for the builder function.
  */
 
-import convertSourceMap from 'convert-source-map';
-import combineSourceMap from 'combine-source-map';
 import isString from 'lodash/lang/isString';
-import SourceError from './source-error';
 import {resolve, relative} from 'path';
 import isAbsolute from 'is-absolute';
 import {EventEmitter} from 'events';
 import {param} from 'decorate-this';
-import micromatch from 'micromatch';
-import Promise from 'bluebird';
 import subdir from 'subdir';
-import _ from 'lodash';
+import util from './util';
 
 const INBOX = Symbol();
 const ENGINE = Symbol();
@@ -248,13 +243,7 @@ export default class BuilderInvocation extends EventEmitter {
 
 
   /**
-   * Share some utilities so builders may reuse them.
+   * Share utlitiy belt
    */
-  _ = _
-  lodash = _
-  Promise = Promise
-  micromatch = micromatch
-  SourceError = SourceError
-  convertSourceMap = convertSourceMap
-  combineSourceMap = combineSourceMap 
+  util = util
 }
