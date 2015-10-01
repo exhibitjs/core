@@ -2,7 +2,7 @@
 
 [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][depstat-image]][depstat-url]
 
-A library for incrementally building files in batches. This is the engine at the core of [Exhibit](https://github.com/exhibitjs/exhibit).
+This is the engine at the core of [Exhibit.js](https://github.com/exhibitjs/exhibit). Its separation is mainly for the purpose of breaking up a large codebase.
 
 
 ## usage

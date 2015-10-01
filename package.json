@@ -40,7 +40,8 @@
   },
   "files": [
     "src",
-    "dist/lib"
+    "dist/lib",
+    "util"
   ],
   "homepage": "https://github.com/exhibitjs/core",
   "license": "MIT",
