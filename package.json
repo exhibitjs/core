@@ -31,6 +31,7 @@
     "clear-trace": "^0.0.7",
     "eslint": "^1.5.1",
     "eslint-config-exhibit": "^1.0.0",
+    "eslint-plugin-babel": "^2.1.1",
     "glob": "^5.0.15",
     "mocha": "^2.3.3",
     "nodemon": "^1.7.1",
