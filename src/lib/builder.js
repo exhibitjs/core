@@ -1,8 +1,8 @@
 /**
- * A harness for a builder function.
+ * Execution harness for a builder function.
  */
 
-import {param, promises, returns, AnyOf, ArrayOf, Optional} from 'decorate-this';
+import {param, promises, ArrayOf, Optional} from 'decorate-this';
 import {orange, grey, cyan, purple} from './colours';
 import BuilderInvocation from './builder-invocation';
 import {VirtualFolder} from 'virtual-folder';
@@ -11,7 +11,6 @@ import isString from 'lodash/lang/isString';
 import isObject from 'lodash/lang/isObject';
 import BuilderError from './builder-error';
 import PathPairSet from './path-pair-set';
-import isAbsolute from 'is-absolute';
 import {filter, map} from 'in-place';
 import Promise from 'bluebird';
 import {relative} from 'path';
@@ -19,10 +18,12 @@ import Engine from './engine';
 import Plugin from './plugin';
 
 const BASE = Symbol();
-const ENGINE = Symbol();
 const INBOX = Symbol();
+const ENGINE = Symbol();
 const OUTPUTTINGS = Symbol();
 const IMPORTATIONS = Symbol();
+// const IMPORT_CONTENTS = Symbol();
+// const IMPORT_PATH_RESOLUTIONS = Symbol();
 
 
 export default class Builder extends Plugin {
@@ -48,7 +49,13 @@ export default class Builder extends Plugin {
     this[IMPORTATIONS] = new PathPairSet(); // [buildPath, importPath]
     this[OUTPUTTINGS] = new PathPairSet(); // [buildPath, outputPath]
 
-    Object.defineProperty(this, 'outbox', {value: outbox}); // because it needs to be accessed externally (everything else has symbol keys due to least privilege principle)
+    // this[IMPORT_PATH_RESOLUTIONS] = {}; // requestedImportPath: resolvedImportPath
+    // this[IMPORT_CONTENTS] = {}; // resolvedImportPath: buffer
+
+    // string keys for props that need to be externally accessible (but read-only)
+    Object.defineProperty(this, 'outbox', {value: outbox});
+    Object.defineProperty(this, 'externalImportsCache', {value: {}}); // requestedImportPath: result
+    Object.defineProperty(this, 'externalImportResolutions', {value: {}}); // requestedImportPath: realPath
   }
 
 
@@ -72,9 +79,11 @@ export default class Builder extends Plugin {
       }
     }
 
-    // get the union of all changed paths
+    // get the union of all changed paths AND ALSO while we're at it, delete any of these from the import cache
     const allChangedPaths = new Set(changedInternalPaths);
-    for (const path of changedExternalPaths) allChangedPaths.add(path);
+    for (const path of changedExternalPaths) {
+      allChangedPaths.add(path);
+    }
 
     // get the old mappings, and start new ones
     const oldImportations = this[IMPORTATIONS];
@@ -95,6 +104,21 @@ export default class Builder extends Plugin {
 
       return set;
     })();
+
+    // todo: delete anything in the externalImportsCache that might have been changed? not sure when to do this
+      // if (this.externalImportsCache[path]) {
+      //   console.log('DELETING CACHED EXTERNAL IMPORT', path);
+      //   delete this.externalImportsCache[path];
+
+      //   // also delete any resolutions to it
+      //   for (var requestPath in this.externalImportResolutions) {
+      //     if (this.externalImportResolutions.hasOwnProperty(requestPath)) {
+      //       if (this.externalImportResolutions[requestPath] === path) {
+      //         delete this.externalImportResolutions[requestPath];
+      //       }
+      //     }
+      //   }
+      // }
 
     // make an array to return at the end
     const finalResults = []; // [{path, contents}, ...]
@@ -117,6 +141,7 @@ export default class Builder extends Plugin {
           importations: newImportations,
           buildPath,
           engine: this[ENGINE],
+          externalImportsCache: this.externalImportsCache,
         });
 
 

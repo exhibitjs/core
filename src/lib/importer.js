@@ -1,5 +1,5 @@
-import {param, ArrayOf} from 'decorate-this';
-import minimatch from 'minimatch';
+// import {param, ArrayOf} from 'decorate-this';
+import micromatch from 'micromatch';
 import Promise from 'bluebird';
 import Plugin from './plugin';
 import _ from 'lodash';
@@ -21,5 +21,5 @@ export default class Importer extends Plugin {
   Set = Set
   lodash = _
   Promise = Promise
-  minimatch = minimatch
+  micromatch = micromatch
 }

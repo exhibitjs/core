@@ -9,13 +9,14 @@ import {isFunction} from 'lodash';
 
 const NAME = Symbol();
 
+// TODO: rename `Plugin` => `Nameable`
 export default class Plugin extends EventEmitter {
   constructor(fn) {
     super();
 
     console.assert(isFunction(fn), 'should be function');
+
     Object.defineProperty(this, 'fn', {value: fn});
-    console.assert(isFunction(this.fn), 'should be function');
   }
 
 

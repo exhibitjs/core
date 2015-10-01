@@ -3,13 +3,15 @@
  * limited `this.*` API for the builder function.
  */
 
-import {param, promises} from 'decorate-this';
+import convertSourceMap from 'convert-source-map';
+import combineSourceMap from 'combine-source-map';
 import isString from 'lodash/lang/isString';
 import SourceError from './source-error';
 import {resolve, relative} from 'path';
 import isAbsolute from 'is-absolute';
 import {EventEmitter} from 'events';
-import minimatch from 'minimatch';
+import {param} from 'decorate-this';
+import micromatch from 'micromatch';
 import Promise from 'bluebird';
 import subdir from 'subdir';
 import _ from 'lodash';
@@ -26,7 +28,7 @@ export default class BuilderInvocation extends EventEmitter {
    * etc. due to circular imports problem
    * https://github.com/babel/babel/issues/1150
    */
-  constructor({base, inbox, importations, buildPath, engine}) {
+  constructor({base, inbox, importations, buildPath, engine, externalImportsCache}) {
     super();
     console.assert(engine instanceof require('./engine'));
 
@@ -34,6 +36,8 @@ export default class BuilderInvocation extends EventEmitter {
     this[IMPORTATIONS] = importations;
     this[BUILD_PATH] = buildPath;
     this[INBOX] = inbox;
+
+    this.externalImportsCache = externalImportsCache;
 
     Object.defineProperty(this, 'base', {value: base});
   }
@@ -80,11 +84,13 @@ export default class BuilderInvocation extends EventEmitter {
 
 
   /**
-   * Asynchronously import a path from OUTSIDE the project source, i.e. using any configured importers.
-   * (This method can in fact take an internal-looking path, in which case it will be passed to the importers as a relative path from the source dir.)
+   * Asynchronously import a path from OUTSIDE the project source, i.e. using
+   * any configured importers.
+   * (This method can in fact take an internal-looking path, in which case it
+   * will be passed to the importers as a relative path from the source dir.)
    */
   async importExternal(path, types) {
-    // normalize it before passing to the importers:
+    // normalize the path
     // if it 'looks' internal, make it relative, otherwise keep it absolute
     let targetPath = resolve(this.base, path);
     if (subdir(this.base, targetPath)) targetPath = relative(this.base, targetPath);
@@ -94,6 +100,17 @@ export default class BuilderInvocation extends EventEmitter {
     else if (types && (!Array.isArray(types) || !types.every(isString))) {
       throw new TypeError('bad type for types, got:', types);
     }
+
+    // try to resolve it from the import cache
+    let cacheKey = targetPath;
+    if (types) cacheKey += types.join('\n');
+
+    const cachedResult = this.externalImportsCache[cacheKey];
+    if (cachedResult) {
+      // console.log('cache HIT', JSON.stringify(cacheKey));
+      return cachedResult;
+    }
+    // else console.log('cache MISS', JSON.stringify(cacheKey));
 
     // try each of the importers
     for (const importer of this[ENGINE].importers) {
@@ -110,8 +127,7 @@ export default class BuilderInvocation extends EventEmitter {
           }
         }
 
-        // record all the paths the importer tried to access (if any of these change in
-        // future then we will need to know which build paths are then invalidated)
+        // record all the paths the importer tried to access
         for (const accessedPath of result.accessed) {
           this[IMPORTATIONS].add(this[BUILD_PATH], resolve(this.base, accessedPath));
         }
@@ -121,7 +137,9 @@ export default class BuilderInvocation extends EventEmitter {
           console.assert(Buffer.isBuffer(result.contents), 'imported contents should be a buffer');
           console.assert(isString(result.path) && isAbsolute(result.path), 'imported result should include an absolute resolved path');
 
-          return {contents: result.contents, path: result.path};
+          const finalResult = {contents: result.contents, path: result.path};
+          this.externalImportsCache[cacheKey] = finalResult;
+          return finalResult;
         }
       }
     }
@@ -185,7 +203,7 @@ export default class BuilderInvocation extends EventEmitter {
   /**
    * Main import method.
    * Tries to import the given path internally then externally.
-   * Requested types are just a hint to importers (such as the bower one so it knows which `main` file to use).
+   * Requested types are just a hint to importers (such as the bower one so it knows which `main` file to use) and only applicable when it ends up being imported from external.
    */
   async import(path, types) {
     path = resolve(this.base, path);
@@ -235,6 +253,8 @@ export default class BuilderInvocation extends EventEmitter {
   _ = _
   lodash = _
   Promise = Promise
-  minimatch = minimatch
+  micromatch = micromatch
   SourceError = SourceError
+  convertSourceMap = convertSourceMap
+  combineSourceMap = combineSourceMap 
 }
