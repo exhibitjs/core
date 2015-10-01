@@ -62,11 +62,11 @@ export default class SourceError extends Error {
 
       line = this.line + 1;
       max = this.maxLines;
-      mostDigits = ('' + this.line).length + 1;
+      mostDigits = String(this.line).length + 1;
       sourceSplit = this.contents.toString().split('\n');
 
       while (line-- > 1 && max-- > 0) {
-        digitGap = spaces(mostDigits - ('' + line).length);
+        digitGap = spaces(mostDigits - String(line).length);
         lineReport = '  ' + digitGap + grey(line) + grey(' ┃ ');
 
         if (line === this.line) lineReport += sourceSplit[line - 1]; // the error line: bright

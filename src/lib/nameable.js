@@ -9,8 +9,8 @@ import {isFunction} from 'lodash';
 
 const NAME = Symbol();
 
-// TODO: rename `Plugin` => `Nameable`
-export default class Plugin extends EventEmitter {
+
+export default class Nameable extends EventEmitter {
   constructor(fn) {
     super();
 

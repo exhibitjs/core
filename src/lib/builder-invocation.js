@@ -25,7 +25,7 @@ export default class BuilderInvocation extends EventEmitter {
    */
   constructor({base, inbox, importations, buildPath, engine, externalImportsCache}) {
     super();
-    console.assert(engine instanceof require('./engine'));
+    console.assert(engine instanceof require('./engine')); // eslint-disable-line global-require
 
     this[ENGINE] = engine;
     this[IMPORTATIONS] = importations;
@@ -239,7 +239,6 @@ export default class BuilderInvocation extends EventEmitter {
 
     throw lastError;
   }
-
 
 
   /**

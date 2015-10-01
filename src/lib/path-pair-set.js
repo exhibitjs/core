@@ -101,7 +101,6 @@ export default class PathPairSet {
   }
 
 
-
   @param(String)
   @returns(Set)
   getAllRights() {

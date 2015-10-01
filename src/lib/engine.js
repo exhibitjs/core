@@ -28,7 +28,7 @@ export default class Engine extends EventEmitter {
     verbose: Boolean,
   })
 
-  init({builders=[], importers=[], base, verbose}) {
+  init({builders = [], importers = [], base, verbose}) {
     this[BATCH_RUNNING] = false;
     this[INITIAL_INBOX] = new VirtualFolder();
     this[FINAL_OUTBOX] = new VirtualFolder();
@@ -37,7 +37,7 @@ export default class Engine extends EventEmitter {
     this[BUILDERS] = [];
 
     Object.defineProperties(this, {
-      verbose: {value: !!verbose},
+      verbose: {value: Boolean(verbose)},
       importers: {value: importers.map(fn => {
         return new Importer(fn);
       })},
@@ -54,7 +54,6 @@ export default class Engine extends EventEmitter {
       this[BUILDERS][i] = new Builder({inbox, outbox, fn, base, engine: this});
     }
   }
-
 
 
   // /**
@@ -85,7 +84,7 @@ export default class Engine extends EventEmitter {
   //   'External files that have changed (to trigger rebuilds of anything else)'
   // )
 
-  async batch(files=[], changedExternalPaths=[]) {
+  async batch(files = [], changedExternalPaths = []) {
     if (this[BATCH_RUNNING]) {
       throw new Error('Cannot run two batches at the same time');
     }

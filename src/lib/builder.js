@@ -15,7 +15,7 @@ import {filter, map} from 'in-place';
 import Promise from 'bluebird';
 import {relative} from 'path';
 import Engine from './engine';
-import Plugin from './plugin';
+import Nameable from './nameable';
 
 const BASE = Symbol();
 const INBOX = Symbol();
@@ -26,7 +26,7 @@ const IMPORTATIONS = Symbol();
 // const IMPORT_PATH_RESOLUTIONS = Symbol();
 
 
-export default class Builder extends Plugin {
+export default class Builder extends Nameable {
   constructor(options) {
     super(options.fn);
     this.init(options);
@@ -39,7 +39,7 @@ export default class Builder extends Plugin {
     outbox: VirtualFolder,
     // engine: Engine, // causes weird error
   })
-  init ({inbox, outbox, engine, base}) {
+  init({inbox, outbox, engine, base}) {
     console.assert(engine instanceof Engine);
 
     this[INBOX] = inbox;
@@ -62,12 +62,11 @@ export default class Builder extends Plugin {
   /**
    * Executes this builder for a batch of changes.
    */
-  @param(Set/*Of(String)*/)
-  @param(Set/*Of(String)*/)
+  @param(Set) // SetOf(String) not working?
+  @param(Set) // same issue
   @promises(ArrayOf({path: String, contents: Optional(Buffer)}))
 
   async execute(changedInternalPaths, changedExternalPaths) {
-
     if (this[ENGINE].verbose) {
       console.log(orange(`\n      ${changedInternalPaths.size} incoming internal paths`));
       for (const path of changedInternalPaths) {

@@ -14,6 +14,7 @@
     "convert-source-map": "^1.1.1",
     "decamelize": "^1.0.0",
     "decorate-this": "^0.5.0",
+    "eslint-plugin-babel": "^2.1.1",
     "graceful-fs": "^4.1.2",
     "in-place": "^1.1.0",
     "is-absolute": "^0.2.2",
@@ -29,7 +30,7 @@
     "chai": "^3.3.0",
     "clear-trace": "^0.0.7",
     "eslint": "^1.5.1",
-    "exhibit-conventions": "^1.0.0",
+    "eslint-config-exhibit": "^1.0.0",
     "glob": "^5.0.15",
     "mocha": "^2.3.3",
     "nodemon": "^1.7.1",
@@ -51,11 +52,11 @@
     "url": "https://github.com/exhibitjs/core"
   },
   "scripts": {
-    "build": "babel src --out-dir dist --babelrc node_modules/exhibit-conventions/.babelrc",
-    "buildwatch": "babel src --out-dir dist --babelrc node_modules/exhibit-conventions/.babelrc --watch",
+    "build": "babel src --out-dir dist",
+    "buildwatch": "babel src --out-dir dist --watch",
     "clean": "rimraf dist",
     "prepublish": "npm run build && npm test",
-    "test": "cd dist && mocha",
+    "test": "eslint . && cd dist && mocha",
     "testwatch": "cd dist && mocha --watch"
   }
 }

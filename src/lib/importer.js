@@ -1,11 +1,11 @@
 // import {param, ArrayOf} from 'decorate-this';
 import micromatch from 'micromatch';
 import Promise from 'bluebird';
-import Plugin from './plugin';
+import Nameable from './nameable';
 import _ from 'lodash';
 
 
-export default class Importer extends Plugin {
+export default class Importer extends Nameable {
   constructor(fn) {
     console.assert(_.isFunction(fn), 'should be a function');
     super(fn);
@@ -14,7 +14,7 @@ export default class Importer extends Plugin {
   // @param(String)
   // @param(ArrayOf(String))
   async execute(path, types) {
-    return this.fn.call(this, path, types);
+    return this.fn(path, types);
   }
 
   _ = _
