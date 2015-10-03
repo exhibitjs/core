@@ -9,10 +9,19 @@ import combineSourceMap from 'combine-source-map';
 
 const util = {};
 
-Object.defineProperties(util, {
+define(util, {
   sander, lodash, subdir, bluebird, micromatch, SourceError,
   convertSourceMap, combineSourceMap,
   Promise: bluebird, _: lodash, fs: sander,
 });
 
 export default util;
+
+
+function define(obj, props) {
+  for (const key in props) {
+    if (!props.hasOwnProperty(key)) continue;
+
+    Object.defineProperty(obj, key, {value: props[key], enumerable: true});
+  }
+}
