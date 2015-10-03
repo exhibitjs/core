@@ -46,6 +46,7 @@
     "util"
   ],
   "homepage": "https://github.com/exhibitjs/core",
+  "jsnext:main": "src/lib/index.js",
   "license": "MIT",
   "main": "dist/lib",
   "repository": {
