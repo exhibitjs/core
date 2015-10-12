@@ -1,11 +1,8 @@
 {
   "name": "exhibit-core",
-  "description": "Engine for Exhibit",
+  "description": "The engine used by Exhibit.js",
   "version": "0.4.0",
   "author": "Callum Locke",
-  "bugs": {
-    "url": "https://github.com/exhibitjs/exhibit/issues"
-  },
   "dependencies": {
     "autobind-decorator": "^1.3.2",
     "bluebird": "^2.10.2",
@@ -29,7 +26,7 @@
     "chai": "^3.3.0",
     "clear-trace": "^0.0.7",
     "eslint": "^1.6.0",
-    "eslint-config-exhibit": "^1.0.0",
+    "eslint-config-exhibit": "^2.0.0",
     "eslint-plugin-babel": "^2.1.1",
     "glob": "^5.0.15",
     "mocha": "^2.3.3",
@@ -50,10 +47,7 @@
   "jsnext:main": "src/lib/index.js",
   "license": "MIT",
   "main": "dist/lib",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/exhibitjs/core"
-  },
+  "repository": "exhibitjs/core",
   "scripts": {
     "build": "rimraf dist && babel src --out-dir dist",
     "buildwatch": "rimraf dist && babel src --out-dir dist --watch",
