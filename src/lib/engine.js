@@ -1,9 +1,9 @@
 import {param, ArrayOf, Optional} from 'decorate-this';
-import identity from 'lodash/utility/identity';
 import {VirtualFolder} from 'virtual-folder';
 import {magenta, grey} from './colours';
 import {EventEmitter} from 'events';
 import Importer from './importer';
+import {identity} from 'lodash';
 import {filter} from 'in-place';
 import Builder from './builder';
 import {relative} from 'path';
@@ -27,7 +27,6 @@ export default class Engine extends EventEmitter {
     base: String, // for deciding quickly if a path is 'internal' (needs to go through pipeline) or 'external' (can be pulled in straight from disk)
     verbose: Boolean,
   })
-
   init({builders = [], importers = [], base, verbose}) {
     this[BATCH_RUNNING] = false;
     this[INITIAL_INBOX] = new VirtualFolder();
@@ -51,10 +50,11 @@ export default class Engine extends EventEmitter {
       const inbox = isFirst ? this[INITIAL_INBOX] : this[BUILDERS][i - 1].outbox;
       const outbox = isLast ? this[FINAL_OUTBOX] : new VirtualFolder();
 
-      this[BUILDERS][i] = new Builder({inbox, outbox, fn, base, engine: this});
+      this[BUILDERS][i] = new Builder({
+        inbox, outbox, fn, base, engine: this,
+      });
     }
   }
-
 
   // /**
   //  * Imports a file from outside the project (e.g. from a load path - but load path resolution will be
@@ -66,7 +66,6 @@ export default class Engine extends EventEmitter {
   // importMissingFile(path) {
   //   return this[IMPORTER](path);
   // }
-
 
   /**
    * Incrementally process a set of changes.
@@ -83,7 +82,6 @@ export default class Engine extends EventEmitter {
   //   Optional(ArrayOf(String)),
   //   'External files that have changed (to trigger rebuilds of anything else)'
   // )
-
   async batch(files = [], changedExternalPaths = []) {
     if (this[BATCH_RUNNING]) {
       throw new Error('Cannot run two batches at the same time');
@@ -118,9 +116,7 @@ export default class Engine extends EventEmitter {
     for (let i = 0; i < this[NUM_BUILDERS]; i++) {
       const builder = this[BUILDERS][i];
       if (this.verbose) {
-        console.log(
-          magenta(`\n  ${builder.name} (builder ${i + 1} of ${this[NUM_BUILDERS]})`)
-        );
+        console.log(magenta(`\n  ${builder.name} (builder ${i + 1} of ${this[NUM_BUILDERS]})`));
       }
 
       // bubble up errors from builders

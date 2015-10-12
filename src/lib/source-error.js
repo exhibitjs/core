@@ -1,5 +1,8 @@
 /**
- * Error class that builders can elect to use to report an error in a source file. The point of this is to normalise the way errors get printed in the console.
+ * Error class that builders may use to report an error in a source file. The
+ * point of this is to normalise how errors get printed in the console.
+ *
+ * This will eventually be published separately.
  *
  * message - just the problem, no filename/line number etc.
  * filename

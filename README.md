@@ -2,10 +2,14 @@
 
 [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][depstat-image]][depstat-url]
 
-This is the engine at the core of [Exhibit.js](https://github.com/exhibitjs/exhibit). Its separation is mainly for the purpose of breaking up a large codebase.
+This is the engine at the core of Exhibit.js.
+
+The main [exhibit](https://github.com/exhibitjs/exhibit) module is essentially a wrapper around this engine, adding things that make it more user friendly: watch-triggered batches, logging events, writing out changes to a destination directory, default importers, server and BrowserSync integration etc.
+
+The engine itself is just a manually operated functional system for processing incremental batches of changes to a set of files. It remembers state so it can process subsequent batches quicker. You configure it with builders (without which it would just output whatever you put in) and importers (which are made available to builders for importing external files).
 
 
-## usage
+## Usage
 
 ```js
 import Engine from 'exhibit-core';
@@ -17,10 +21,11 @@ engine.batch(files, changedExternalPaths).then(results => {
 
 }).catch(err => console.error(err));
 
-// (followed by further, incremental .batch() calls)
+// (then do further, incremental .batch() calls, passing only changed source files)
 ```
 
-### options
+
+### Options
 
 - `builders` - array of builder functions
 - `importers` - array of importer functions

@@ -1,48 +1,64 @@
 /**
- * This class represents a single invocation of a builder, and provides a
- * limited `this.*` API for the builder function.
+ * Job objects are passed into builder functions. They tell the builder what to do, and proxde methods to import other files in order to complete the job.
  */
 
+import {resolve, relative, isAbsolute, extname} from 'path';
+import {param, Optional, ArrayOf} from 'decorate-this';
 import isString from 'lodash/lang/isString';
-import {resolve, relative} from 'path';
-import isAbsolute from 'is-absolute';
+import isArray from 'lodash/lang/isArray';
+import autobind from 'autobind-decorator';
 import {EventEmitter} from 'events';
-import {param} from 'decorate-this';
 import subdir from 'subdir';
 import util from './util';
 
 const INBOX = Symbol();
 const ENGINE = Symbol();
-const BUILD_PATH = Symbol();
 const IMPORTATIONS = Symbol();
 
-
-export default class BuilderInvocation extends EventEmitter {
+@autobind
+export default class Job extends EventEmitter {
   /**
    * Can't move this to a decorated `init` to check types of `inbox`, `engine`
    * etc. due to circular imports problem
    * https://github.com/babel/babel/issues/1150
    */
-  constructor({base, inbox, importations, buildPath, engine, externalImportsCache}) {
-    super();
+  constructor({contents, origin, inbox, importations, path, engine, externalImportsCache}) {
     console.assert(engine instanceof require('./engine')); // eslint-disable-line global-require
+    console.assert(path && isAbsolute(path), 'need absolute path');
+    console.assert(origin && subdir(origin, path), 'path must be within origin');
 
+    super();
     this[ENGINE] = engine;
     this[IMPORTATIONS] = importations;
-    this[BUILD_PATH] = buildPath;
     this[INBOX] = inbox;
 
-    this.externalImportsCache = externalImportsCache;
+    this.externalImportsCache = externalImportsCache; // TODO: can't this be set with a symbol, or defineProperty?
 
-    Object.defineProperty(this, 'base', {value: base});
+
+    // set fixed properties that builders may access for info about the job
+    Object.defineProperties(this, {
+      path         : {value: path},
+      contents     : {value: contents},
+      origin       : {value: origin}, // should this be called origin?
+      ext          : {get: () => extname(path)},
+      relativePath : {get: () => relative(origin, path)},
+    });
   }
+
+  /**
+   * Standardised method for builders to use to see if the current job matches the given thing. The thing could itself be a true/false-returning function, or a glob/path, or an array of globs/paths. Globs/paths will be matched using micromatch.filter. Store this filter function in a Map (or WeakMap?) as a memo.
+   * TODO
+   */
+  // matches() {
+  // }
 
 
   /**
    * Override method just to add type-checking.
    */
-  @param(String)
+  // @param(String)
   emit(...args) {
+    if (!isString(args[0])) throw new TypeError('Expected string.');
     super.emit.apply(this, args);
   }
 
@@ -51,27 +67,31 @@ export default class BuilderInvocation extends EventEmitter {
    * Synchronously imports a file from INSIDE the in-transit project source.
    * Returns {path, contents} where path is a resolved absolute path.
    */
-  importInternal(path) {
-    path = resolve(this.base, path);
-    if (!subdir(this.base, path)) {
-      throw new Error('importInternal cannot import a file outside the source directory');
+  // @param(String)
+  importInternalFile(importPath) {
+    importPath = resolve(this.origin, importPath);
+    if (!subdir(this.origin, importPath)) {
+      throw new Error('importInternalFile cannot import a file outside the source directory');
     }
 
-    this[IMPORTATIONS].add(this[BUILD_PATH], resolve(this.base, path));
+    this[IMPORTATIONS].add(this.path, importPath);
 
-    const contents = this[INBOX].read(path);
+    const importContents = this[INBOX].read(importPath);
 
-    if (contents) {
-      return {path, contents};
+    if (importContents) {
+      return Object.defineProperties({}, {
+        path: {value: importPath},
+        contents: {value: importContents},
+      });
     }
 
-    if (false && this[INBOX].isDir(path)) { // TODO!!!
-      const error = new Error('Is a directory: ' + path);
+    if (false && this[INBOX].isDir(importPath)) { // TODO!!!
+      const error = new Error('Is a directory: ' + importPath);
       error.code = 'EISDIR';
       throw error;
     }
     else {
-      const error = new Error('Not found: ' + path);
+      const error = new Error('Not found: ' + importPath);
       error.code = 'ENOENT';
       throw error;
     }
@@ -82,13 +102,15 @@ export default class BuilderInvocation extends EventEmitter {
    * Asynchronously import a path from OUTSIDE the project source, i.e. using
    * any configured importers.
    * (This method can in fact take an internal-looking path, in which case it
-   * will be passed to the importers as a relative path from the source dir.)
+   * will be passed to the importers as a relative path from the base dir.)
    */
-  async importExternal(path, types) {
+  // @param(String)
+  // @param(Optional(ArrayOf(String)))
+  async importExternalFile(path, types) {
     // normalize the path
     // if it 'looks' internal, make it relative, otherwise keep it absolute
-    let targetPath = resolve(this.base, path);
-    if (subdir(this.base, targetPath)) targetPath = relative(this.base, targetPath);
+    let targetPath = resolve(this.origin, path);
+    if (subdir(this.origin, targetPath)) targetPath = relative(this.origin, targetPath);
 
     // allow types to be passed as an array or string
     if (isString(types)) types = [types];
@@ -124,7 +146,7 @@ export default class BuilderInvocation extends EventEmitter {
 
         // record all the paths the importer tried to access
         for (const accessedPath of result.accessed) {
-          this[IMPORTATIONS].add(this[BUILD_PATH], resolve(this.base, accessedPath));
+          this[IMPORTATIONS].add(this.path, resolve(this.origin, accessedPath));
         }
 
         // if this was a successful import, return it
@@ -148,15 +170,16 @@ export default class BuilderInvocation extends EventEmitter {
 
 
   /**
-   * Multi-path version of #importInternal().
+   * Multi-path version of #importInternalFile().
    */
+  // @param(ArrayOf(String))
   importFirstInternal(paths) {
     let lastError;
 
     for (const path of paths) {
       let result;
       try {
-        result = this.importInternal(path);
+        result = this.importInternalFile(path);
       }
       catch (error) {
         if (error.code !== 'ENOENT' && error.code !== 'EISDIR') throw error;
@@ -172,15 +195,17 @@ export default class BuilderInvocation extends EventEmitter {
 
 
   /**
-   * Multi-path version of #importExternal().
+   * Multi-path version of #importExternalFile().
    */
+  @param(ArrayOf(String))
+  @param(Optional(ArrayOf(String)))
   async importFirstExternal(paths, types) {
     let lastError;
 
     for (const path of paths) {
       let result;
       try {
-        result = await this.importExternal(path, types);
+        result = await this.importExternalFile(path, types);
       }
       catch (error) {
         if (error.code !== 'ENOENT' && error.code !== 'EISDIR') throw error;
@@ -198,13 +223,19 @@ export default class BuilderInvocation extends EventEmitter {
   /**
    * Main import method.
    * Tries to import the given path internally then externally.
-   * Requested types are just a hint to importers (such as the bower one so it knows which `main` file to use) and only applicable when it ends up being imported from external.
+   * Requested types are just a hint to importers (such as the bower one so it knows which `main` file to use) and only applicable on external imports.
    */
-  async import(path, types) {
-    path = resolve(this.base, path);
-    if (subdir(this.base, path)) {
+  // @param(String)
+  // @param(Optional(ArrayOf(String)))
+  async importFile(path, types) {
+    console.assert(isString(path) && (types == null || isArray(types)));
+
+    // console.log('YO', path);
+    // console.log('TYPES', types);
+    path = resolve(this.origin, path);
+    if (subdir(this.origin, path)) {
       try {
-        return this.importInternal(path);
+        return this.importInternalFile(path);
       }
       catch (error) {
         if (error.code !== 'ENOENT' && error.code !== 'EISDIR') {
@@ -213,20 +244,22 @@ export default class BuilderInvocation extends EventEmitter {
       }
     }
 
-    return this.importExternal(path, types);
+    return this.importExternalFile(path, types);
   }
 
 
   /**
-   * Multi-path version of #import().
+   * Multi-path version of #importFile(), returning the first one that exists.
    */
+  // @param(ArrayOf(String))
+  // @param(Optional(ArrayOf(String)))
   async importFirst(paths, types) {
     let lastError;
 
     for (const path of paths) {
       let result;
       try {
-        result = await this.import(path, types);
+        result = await this.importFile(path, types);
       }
       catch (error) {
         if (error.code !== 'ENOENT' && error.code !== 'EISDIR') throw error;

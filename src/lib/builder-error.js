@@ -1,7 +1,9 @@
 /**
- * Error class for when a builder returns something dodgy OR when it throws/emits an error (in the latter case, the emitted/thrown error will be set as `originalError`)
+ * Error class for any error coming from a builder.
  *
- * TODO restructure so these things are two distinct classes of error, not one class you have to duck-check to work out which kind it is
+ * originalError is the real error. Often this will be a SourceError or something else thrown by the builder. Or it may be an error thrown by Exhibit because the builder returned something invalid.
+ *
+ * The point of this 'wrapper' error class is to provide a consistent API for finding out which builder had the error, and which file it was building at the time.
  */
 
 export default class BuilderError extends Error {
@@ -9,10 +11,10 @@ export default class BuilderError extends Error {
     super(message);
 
     Object.defineProperties(this, {
-      code: {value: 'BUILDER_ERROR'},
-      builder: {value: builder},
-      buildPath: {value: buildPath},
-      originalError: {value: originalError},
+      code          : {value: 'BUILDER_ERROR'},
+      builder       : {value: builder},
+      buildPath     : {value: buildPath},
+      originalError : {value: originalError},
     });
   }
 }

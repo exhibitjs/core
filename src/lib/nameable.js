@@ -1,6 +1,8 @@
 /**
  * Abstract base class for code shared between the two plugin types, Builder and
  * Importer.
+ *
+ * A more accurate name might be NamedFunctionHarness.
  */
 
 import {EventEmitter} from 'events';
