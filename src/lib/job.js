@@ -4,15 +4,15 @@
 
 import {resolve, relative, isAbsolute, extname} from 'path';
 import {param, Optional, ArrayOf} from 'decorate-this';
-import isString from 'lodash/lang/isString';
-import isArray from 'lodash/lang/isArray';
+import {isString, isFunction, isArray} from 'lodash';
+import {default as util, micromatch} from './util';
 import autobind from 'autobind-decorator';
 import {EventEmitter} from 'events';
 import subdir from 'subdir';
-import util from './util';
 
 const INBOX = Symbol();
 const ENGINE = Symbol();
+const MATCHERS = Symbol();
 const IMPORTATIONS = Symbol();
 
 @autobind
@@ -31,6 +31,7 @@ export default class Job extends EventEmitter {
     this[ENGINE] = engine;
     this[IMPORTATIONS] = importations;
     this[INBOX] = inbox;
+    this[MATCHERS] = new WeakMap();
 
     this.externalImportsCache = externalImportsCache; // TODO: can't this be set with a symbol, or defineProperty?
 
@@ -46,12 +47,26 @@ export default class Job extends EventEmitter {
   }
 
   /**
-   * Standardised method for builders to use to see if the current job matches the given thing. The thing could itself be a true/false-returning function, or a glob/path, or an array of globs/paths. Globs/paths will be matched using micromatch.filter. Store this filter function in a Map (or WeakMap?) as a memo.
-   * TODO
+   * Standardised method for builders to use to see if the current job matches the given matcher.
+   *
+   * A 'matcher' could be anything an end user might have set as an option: a
+   * glob, or an array of globs, or just a function that returns true or false.
    */
-  // matches() {
-  // }
+  matches(matcher) {
+    if (isFunction(matcher)) return matcher(this.relativePath);
 
+    // make a micromatch filter function (and memoize it)
+    if (!this[MATCHERS].has(matcher)) {
+      if (isString(matcher) || (isArray(matcher) && matcher.every(isString))) {
+        this[MATCHERS].set(matcher, micromatch.filter(matcher));
+      }
+
+      throw new TypeError('matches() expects a function, glob string, or an array of glob strings');
+    }
+
+    // use the memoized micromatch filter function
+    return this[MATCHERS].get(matcher)(this.relativePath);
+  }
 
   /**
    * Override method just to add type-checking.
@@ -61,7 +76,6 @@ export default class Job extends EventEmitter {
     if (!isString(args[0])) throw new TypeError('Expected string.');
     super.emit.apply(this, args);
   }
-
 
   /**
    * Synchronously imports a file from INSIDE the in-transit project source.
@@ -97,12 +111,11 @@ export default class Job extends EventEmitter {
     }
   }
 
-
   /**
    * Asynchronously import a path from OUTSIDE the project source, i.e. using
    * any configured importers.
    * (This method can in fact take an internal-looking path, in which case it
-   * will be passed to the importers as a relative path from the base dir.)
+   * will be resolved from the origin dir before being passed to importers.)
    */
   // @param(String)
   // @param(Optional(ArrayOf(String)))
@@ -168,7 +181,6 @@ export default class Job extends EventEmitter {
     throw error;
   }
 
-
   /**
    * Multi-path version of #importInternalFile().
    */
@@ -192,7 +204,6 @@ export default class Job extends EventEmitter {
 
     throw lastError;
   }
-
 
   /**
    * Multi-path version of #importExternalFile().
@@ -218,7 +229,6 @@ export default class Job extends EventEmitter {
 
     throw lastError;
   }
-
 
   /**
    * Main import method.
@@ -247,7 +257,6 @@ export default class Job extends EventEmitter {
     return this.importExternalFile(path, types);
   }
 
-
   /**
    * Multi-path version of #importFile(), returning the first one that exists.
    */
@@ -272,7 +281,6 @@ export default class Job extends EventEmitter {
 
     throw lastError;
   }
-
 
   /**
    * Share utlitiy belt
