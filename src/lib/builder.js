@@ -10,7 +10,7 @@ import {isString, isObject} from 'lodash';
 import BuilderError from './builder-error';
 import PathPairSet from './path-pair-set';
 import {filter, map} from 'in-place';
-import Nameable from './nameable';
+import Harness from './harness';
 import Promise from 'bluebird';
 import {relative} from 'path';
 import Engine from './engine';
@@ -22,7 +22,7 @@ const ENGINE = Symbol();
 const OUTPUTTINGS = Symbol();
 const IMPORTATIONS = Symbol();
 
-export default class Builder extends Nameable {
+export default class Builder extends Harness {
   constructor(options) {
     super(options.fn);
     this.init(options);

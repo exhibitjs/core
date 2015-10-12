@@ -37,9 +37,7 @@ export default class Engine extends EventEmitter {
 
     Object.defineProperties(this, {
       verbose: {value: Boolean(verbose)},
-      importers: {value: importers.map(fn => {
-        return new Importer(fn);
-      })},
+      importers: {value: importers.map(fn => new Importer(fn))},
     });
 
     for (let i = 0; i < this[NUM_BUILDERS]; i++) {
