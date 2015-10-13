@@ -60,10 +60,11 @@ export default class Job extends EventEmitter {
       if (isString(matcher) || (isArray(matcher) && matcher.every(isString))) {
         this[MATCHERS].set(matcher, micromatch.filter(matcher));
       }
-
-      else throw new TypeError(
-        'matches() expects a function, glob string, or an array of glob strings'
-      );
+      else {
+        throw new TypeError(
+          'matches() expects a function, glob string, or an array of glob strings'
+        );
+      }
     }
 
     // use the memoized micromatch filter function
