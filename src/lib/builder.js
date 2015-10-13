@@ -169,7 +169,6 @@ export default class Builder extends Harness {
       throw error;
     }
 
-    // console.log('builder invocationResults', invocationResults);
     if (verbose) console.log(orange(`\n      ${buildPaths.size} build paths`));
 
     // add results to finalResults array
@@ -181,7 +180,7 @@ export default class Builder extends Harness {
       }
 
       let result = invocationResults[buildPath];
-      if (result) {
+      if (buildPath in invocationResults && result !== null) {
         // handle builder returning just a contents buffer/string
         if (Buffer.isBuffer(result) || isString(result)) {
           const newContents = result;
@@ -189,8 +188,25 @@ export default class Builder extends Harness {
           result[buildPath] = newContents;
         }
 
-        console.assert(isObject(result), 'Builder return value invalid');
-        console.assert(!(result instanceof Job), 'Builder returned a job');
+        try {
+          if (!isObject(result)) {
+            throw new Error(
+              `Builder return value invalid - got ${typeof result}`
+            );
+          }
+          if (result instanceof Job) {
+            throw new Error(
+              `Builder returned a job instance`
+            );
+          }
+        }
+        catch (originalError) {
+          throw new BuilderError(`Invalid output from builder ${this.name} building path: ${buildPath}`, {
+            builder: this,
+            buildPath,
+            originalError,
+          });
+        }
 
         if (verbose) {
           const importedPaths = newImportations.getRightsFor(buildPath);

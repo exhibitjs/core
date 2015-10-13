@@ -31,9 +31,9 @@ export default class Job extends EventEmitter {
     this[ENGINE] = engine;
     this[IMPORTATIONS] = importations;
     this[INBOX] = inbox;
-    this[MATCHERS] = new WeakMap();
+    this[MATCHERS] = new Map();
 
-    this.externalImportsCache = externalImportsCache; // TODO: can't this be set with a symbol, or defineProperty?
+    this.externalImportsCache = externalImportsCache; // TODO: establish why this is set like this, not with a symbol?
 
 
     // set fixed properties that builders may access for info about the job
@@ -61,7 +61,9 @@ export default class Job extends EventEmitter {
         this[MATCHERS].set(matcher, micromatch.filter(matcher));
       }
 
-      throw new TypeError('matches() expects a function, glob string, or an array of glob strings');
+      else throw new TypeError(
+        'matches() expects a function, glob string, or an array of glob strings'
+      );
     }
 
     // use the memoized micromatch filter function
@@ -240,8 +242,6 @@ export default class Job extends EventEmitter {
   async importFile(path, types) {
     console.assert(isString(path) && (types == null || isArray(types)));
 
-    // console.log('YO', path);
-    // console.log('TYPES', types);
     path = resolve(this.origin, path);
     if (subdir(this.origin, path)) {
       try {
