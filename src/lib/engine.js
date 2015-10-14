@@ -1,9 +1,9 @@
 import {param, ArrayOf, Optional} from 'decorate-this';
 import {VirtualFolder} from 'virtual-folder';
+import {identity, isString} from 'lodash';
 import {magenta, grey} from './colours';
 import {EventEmitter} from 'events';
 import Importer from './importer';
-import {identity} from 'lodash';
 import {filter} from 'in-place';
 import Builder from './builder';
 import {relative} from 'path';
@@ -54,23 +54,15 @@ export default class Engine extends EventEmitter {
     }
   }
 
-  // /**
-  //  * Imports a file from outside the project (e.g. from a load path - but load path resolution will be
-  //  * handled outside of Core).
-  //  */
-  // @param(String, 'A path to import (may be relative, in which case it could be gotten from load paths)');
-  // @promises({path: String, contents: Buffer}, 'Resolved path and contents of imported file');
-
-  // importMissingFile(path) {
-  //   return this[IMPORTER](path);
-  // }
-
   /**
    * Incrementally process a set of changes.
    */
+  // CANNOT duck-check the input objects because the duck-checker seems to only
+  // accept POJOs, and exhibit usually passes these as Changes, but the engine
+  // shouldn't care about
   // @param(
   //   ArrayOf({
-  //     path: String,
+  //     file: String,
   //     contents: Optional(AnyOf(Buffer, String)),
   //   }),
   //   'Project files to be built (anything new or modified since the last batch)' +
@@ -80,18 +72,26 @@ export default class Engine extends EventEmitter {
   //   Optional(ArrayOf(String)),
   //   'External files that have changed (to trigger rebuilds of anything else)'
   // )
-  async batch(files = [], changedExternalPaths = []) {
+  async batch(input = [], changedExternalPaths = []) {
+    console.assert(input.every(({file, contents}) => isString(file) && (
+      contents === null || Buffer.isBuffer(contents) || isString(contents)
+    )), 'input invalid');
+
+    console.assert(changedExternalPaths.every(isString), 'changedExternalPaths array invalid');
+
+    // disallow concurrent batches (they would ruin everything)
     if (this[BATCH_RUNNING]) {
       throw new Error('Cannot run two batches at the same time');
     }
     this[BATCH_RUNNING] = true;
 
+    // log what's coming into the engine batch
     if (this.verbose) {
       console.log(
-        magenta(`\n  ${files.length} incoming internal paths`)
+        magenta(`\n  ${input.length} incoming internal paths`)
       );
-      for (const {path} of files) {
-        console.log('      ' + grey(relative(this[BASE], path)));
+      for (const {file} of input) {
+        console.log('      ' + grey(relative(this[BASE], file)));
       }
 
       console.log(
@@ -105,28 +105,29 @@ export default class Engine extends EventEmitter {
     // write the file objects into the engine's initial inbox, to get any
     // *actual* changes
     let changes = filter(
-      files.map(({path, contents}) => this[INITIAL_INBOX].write(path, contents)),
+      input.map(({file, contents}) => this[INITIAL_INBOX].write(file, contents)),
       identity
     );
 
     changedExternalPaths = new Set(changedExternalPaths);
 
+    // run each builder in turn, passing each one's changes to the next
     for (let i = 0; i < this[NUM_BUILDERS]; i++) {
       const builder = this[BUILDERS][i];
       if (this.verbose) {
         console.log(magenta(`\n  ${builder.name} (builder ${i + 1} of ${this[NUM_BUILDERS]})`));
       }
 
-      // bubble up errors from builders
+      // bubble up any errors emitted from the builder
       const handleError = error => {
         this.emit('error', error);
       };
-      builder.on('error', handleError); // handle emitted errors
+      builder.on('error', handleError);
 
       // each builder gets 'changes' from the previous one, but all builders get
-      // the same changedExternalPaths array.
+      // the same changedExternalPaths set too.
       try {
-        changes = await builder.execute(new Set(changes.map(c => c.path)), changedExternalPaths);
+        changes = await builder.execute(new Set(changes.map(c => c.file)), changedExternalPaths);
       }
       catch (error) {
         handleError(error); // handle thrown errors or rejections
@@ -137,11 +138,12 @@ export default class Engine extends EventEmitter {
       if (!changes || !changes.length) break;
     }
 
+    // log the final outgoing changes from the batch
     if (this.verbose) {
       console.log(magenta(`\n  ${changes.length} final outgoing changes`));
       for (const change of changes) {
         console.log(grey(
-          `      ${change.type} ${relative(this[BASE], change.path)} (${change.sizeDifference})`
+          `      ${change.type} ${relative(this[BASE], change.file)} (${change.sizeDifference})`
         ));
       }
       console.log('');

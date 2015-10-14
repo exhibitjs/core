@@ -1,5 +1,11 @@
 /**
- * Execution harness for a builder function.
+ * Builder: an execution harness for a user-provided builder function.
+ *
+ * Decides when to call the function, how many times, with what arguments, etc.
+ *
+ * Remembers state so it can reduce the workload of subsequent batches by
+ * calling the function only when changes to output are deemed possible, while
+ * simulating a complete app-wide rebuild every time.
  */
 
 import {param, promises, ArrayOf, Optional} from 'decorate-this';
@@ -41,14 +47,13 @@ export default class Builder extends Harness {
     this[ENGINE] = engine;
     this[BASE] = base;
 
+    // 'pair sets' (like join tables) to remember file relationships
     this[IMPORTATIONS] = new PathPairSet(); // [buildPath, importPath]
     this[OUTPUTTINGS] = new PathPairSet(); // [buildPath, outputPath]
 
     // non-symbol keys for props that need to be externally accessible (but read-only)
     Object.defineProperties(this, {
-      outbox                    : {value: outbox},
-      externalImportsCache      : {value: {}}, // requestedImportPath: result
-      externalImportResolutions : {value: {}}, // requestedImportPath: realPath
+      outbox: {value: outbox},
     });
   }
 
@@ -57,10 +62,11 @@ export default class Builder extends Harness {
    */
   @param(Set) // SetOf(String) not working?
   @param(Set) // same
-  @promises(ArrayOf({path: String, contents: Optional(Buffer)}))
+  @promises(ArrayOf({file: String, contents: Optional(Buffer)}))
   async execute(changedInternalPaths, changedExternalPaths) {
     const {verbose} = this[ENGINE];
 
+    // log all the incoming file paths
     if (verbose) {
       console.log(orange(`\n      ${changedInternalPaths.size} incoming internal paths`));
       for (const path of changedInternalPaths) {
@@ -80,7 +86,9 @@ export default class Builder extends Harness {
     const newImportations = new PathPairSet();
     const newOutputtings = new PathPairSet();
 
-    // make a set of files to (try to) build (this may include files that will turn out to have been deleted when we try to read them and they come back null)
+    // make a set of files that we should [attempt to] build (NB. this may include
+    // files that will later turn out to have been deleted, if we try to read them
+    // and they come back null)
     const buildPaths = (() => {
       // include all changed internal paths
       const set = new Set(changedInternalPaths);
@@ -94,29 +102,11 @@ export default class Builder extends Harness {
       return set;
     })();
 
-    // todo: delete anything in the externalImportsCache that might have been changed? not sure when to do this
-      // if (this.externalImportsCache[path]) {
-      //   console.log('DELETING CACHED EXTERNAL IMPORT', path);
-      //   delete this.externalImportsCache[path];
+    // start an array of files to return at the end
+    const finalResults = []; // [{file, contents}, ...]
 
-      //   // also delete any resolutions to it
-      //   for (var requestPath in this.externalImportResolutions) {
-      //     if (this.externalImportResolutions.hasOwnProperty(requestPath)) {
-      //       if (this.externalImportResolutions[requestPath] === path) {
-      //         delete this.externalImportResolutions[requestPath];
-      //       }
-      //     }
-      //   }
-      // }
-
-    // make an array to return at the end
-    const finalResults = []; // [{path, contents}, ...]
-
-    // capture each individual builder invocation
+    // capture each asynchronous builder invocation
     const invocations = {}; // buildPath: promise
-
-    // capture the incoming contents for each file in case a builder returns true (meaning "pass straight through")
-    // const contentsBefore = {};
 
     // (try to) load and build internal changed files, in parallel
     // (nb. some of these may actually have been deleted)
@@ -125,19 +115,19 @@ export default class Builder extends Harness {
 
       if (contents) {
         const job = new Job({
-          path: buildPath,
+          file: buildPath,
           contents,
-          origin: this[BASE],
+          base: this[BASE],
           inbox: this[INBOX],
           importations: newImportations,
           engine: this[ENGINE],
-          externalImportsCache: this.externalImportsCache,
+          // externalImportsCache: this.externalImportsCache,
         });
 
         // for any errors coming from a builder (either purposefully emitted/thrown due to source
         // code errors or caused by invalid output from a builder), wrap the rror
         const handleError = originalError => {
-          const error = new BuilderError(`Error from builder ${this.name} building path: ${buildPath}`, {
+          const error = new BuilderError(`Error from builder ${this.name} building file: ${buildPath}`, {
             builder: this,
             buildPath,
             originalError,
@@ -148,11 +138,15 @@ export default class Builder extends Harness {
 
         job.on('error', handleError); // handle emitted errors
 
-        // contentsBefore[buildPath] = contents;
-
         invocations[buildPath] = Promise.resolve().then(() => {
           return this.fn.call(null, job);
-        }).catch(handleError);
+        }).catch(err => {
+          handleError(err);
+          // the function threw/rejected (therefore no return value)
+          // so we turn it into an explicit "no output", otherwise it
+          // will be undefined which is illegal
+          return null;
+        });
       }
       // else: this file got deleted; no action required - anything that was
       // previously output exclusively because of this path will get deleted
@@ -175,29 +169,40 @@ export default class Builder extends Harness {
     for (const buildPath of buildPaths) {
       if (!buildPath) continue;
 
-      if (verbose) {
-        console.log(grey(`          ${relative(this[BASE], buildPath)}`));
-      }
+      if (verbose) console.log(grey(`          ${relative(this[BASE], buildPath)}`));
 
       let result = invocationResults[buildPath];
       if (buildPath in invocationResults && result !== null) {
-        // handle builder returning just a contents buffer/string
-        if (Buffer.isBuffer(result) || isString(result)) {
-          const newContents = result;
-          result = {};
-          result[buildPath] = newContents;
-        }
-
+        // validate and normalise the builder's return value (and catch any
+        // error so we can rethrow it as a BuilderError)
         try {
-          if (!isObject(result)) {
-            throw new Error(
-              `Builder return value invalid - got ${typeof result}`
-            );
+          // if it's a buffer/string, this means just output to the same path
+          if (Buffer.isBuffer(result) || isString(result)) {
+            const newContents = result;
+            result = {[buildPath]: newContents};
           }
-          if (result instanceof Job) {
-            throw new Error(
-              `Builder returned a job instance`
-            );
+          // if it's an array of {file,contents} objects, normalise it into a regular results hash
+          else if (Array.isArray(result)) {
+            const items = result;
+            result = {};
+            for (const item of items) {
+              const {file, contents} = item;
+              if (
+                !isString(file) ||
+                !(Buffer.isBuffer(contents) || isString(contents))
+              ) {
+                throw new TypeError('Builder return value invalid - got array containing invalid object');
+              }
+              result[file] = contents;
+            }
+          }
+          // verify it's actually an object
+          else if (!isObject(result)) {
+            throw new Error(`Builder return value invalid - got ${typeof result}`);
+          }
+          // prevent common mistake of returning the job itself
+          else if (result instanceof Job) {
+            throw new TypeError(`Builder returned a job object`);
           }
         }
         catch (originalError) {
@@ -208,6 +213,7 @@ export default class Builder extends Harness {
           });
         }
 
+        // log details of what this build path imported
         if (verbose) {
           const importedPaths = newImportations.getRightsFor(buildPath);
           if (importedPaths.size) {
@@ -227,11 +233,11 @@ export default class Builder extends Harness {
         for (const path of outputPaths) {
           let contents = result[path];
           if (isString(contents)) contents = new Buffer(contents);
-          else console.assert(Buffer.isBuffer(contents), `Expected value for path "${path}" in ${this.name} result object to be string or buffer; got: ` + contents);
+          else console.assert(Buffer.isBuffer(contents), `Expected value for file "${path}" in ${this.name} result object to be string or buffer; got: ` + contents);
 
           const resolvedResultPath = resolvePath(this[BASE], path);
           newOutputtings.add(buildPath, resolvedResultPath);
-          finalResults.push({path: resolvedResultPath, contents});
+          finalResults.push({file: resolvedResultPath, contents});
 
           if (verbose) {
             console.log(cyan('                => ') + grey(relative(this[BASE], resolvedResultPath)));
@@ -240,7 +246,7 @@ export default class Builder extends Harness {
       }
     }
 
-    // LAST STEPS...
+    // FINAL STEPS: get it to a point where the finalResults includes every file in the app, by augmenting it with the outputtings from the previous batch. plus add deletions for any items newly missing.
 
     // carry over any old outputtings where the buildPath is not in this batch's buildPaths set
     for (const [oldBuildPath, oldOutputPath] of oldOutputtings) {
@@ -259,19 +265,19 @@ export default class Builder extends Harness {
       }
     }
 
-    // delete anything that was output last time but not this time
+    // add *deletions* for anything that was output "last batch but not this batch"
     const oldOutputPaths = oldOutputtings.getAllRights();
     const newOutputPaths = newOutputtings.getAllRights();
     let deletedPaths = [];
     for (const path of oldOutputPaths) {
       if (!newOutputPaths.has(path)) {
-        finalResults.push({path, contents: null}); // null = delete it
+        finalResults.push({file: path, contents: null}); // null = delete it
 
         if (verbose) deletedPaths.push(path);
       }
     }
 
-    // verbose-log deletions
+    // log the planned deletions
     if (verbose) {
       console.log(orange(`\n      ${deletedPaths.length} previous outgoing paths to delete`));
       for (const path of deletedPaths) {
@@ -286,15 +292,15 @@ export default class Builder extends Harness {
     // convert the result objects to just actual changes before returning
     filter(map(
       finalResults,
-      ({path, contents}) => this.outbox.write(path, contents)
+      ({file, contents}) => this.outbox.write(file, contents)
     ), x => x);
 
-
+    // log the outgoing changes resulting from this batch
     if (verbose) {
       console.log(orange(`\n      ${finalResults.length} outgoing changes`));
       for (const change of finalResults) {
         console.log(grey(
-          `          ${change.type} ${relative(this[BASE], change.path)} (${change.sizeDifference})`
+          `          ${change.type} ${relative(this[BASE], change.file)} (${change.sizeDifference})`
         ));
       }
     }

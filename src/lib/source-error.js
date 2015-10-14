@@ -27,19 +27,22 @@ const spaces = count => {
 
 
 export default class SourceError extends Error {
-  constructor({message, warning, path, contents, line, column, endLine, endColumn, maxLines = 8}) {
+  constructor({message, warning, file, contents, line, column, endLine, endColumn, maxLines = 8}) {
     super(message);
 
     define(this, {
       code: 'SOURCE_ERROR',
-      message, path, contents, line,
+      message, file, contents, line,
       column, endLine, endColumn, maxLines,
       warning,
     });
   }
 
-
-  get pathSuffix() {
+  /**
+   * Get a suffix for appending to the file path to indicate error position.
+   * Example: ":12:34" (meaning line 12, char 34)
+   */
+  get suffix() {
     let suffix = '';
 
     if (this.line != null) {

@@ -9,8 +9,8 @@ export default class Importer extends Harness {
     super(fn);
   }
 
-  async execute(path, types) {
-    return this.fn(path, types);
+  async execute(file, types) {
+    return this.fn(file, types);
   }
 
   util = util;
