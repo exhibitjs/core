@@ -26,7 +26,7 @@
     "babel-eslint": "^4.1.3",
     "chai": "^3.3.0",
     "clear-trace": "^0.0.7",
-    "eslint": "^1.6.0",
+    "eslint": "^1.7.1",
     "eslint-config-exhibit": "^2.0.0",
     "eslint-plugin-babel": "^2.1.1",
     "glob": "^5.0.15",
