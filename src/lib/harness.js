@@ -4,7 +4,6 @@
  * This is used as an abstract base class for builders and importers.
  */
 
-import memoize from 'memoize-decorator';
 import {EventEmitter} from 'events';
 import decamelize from 'decamelize';
 import {isFunction} from 'lodash';
@@ -16,22 +15,22 @@ export default class Harness extends EventEmitter {
 
     console.assert(isFunction(fn), 'should be function');
 
-    Object.defineProperty(this, 'fn', {
-      value: fn.constructor.name === 'GeneratorFunction' ? coroutine(fn) : fn,
+    let name = fn.name;
+    if (name) {
+      name = decamelize(name, '-');
+      if (name.startsWith('exhibit-')) name = name.substring(8);
+    }
+    else name = '[anonymous]';
+
+    console.log('isGen', fn.constructor.name);
+
+    Object.defineProperties(this, {
+      fn: {value: isGeneratorFunction(fn) ? coroutine(fn) : fn},
+      name: {value: name},
     });
   }
+}
 
-  /**
-   * Gets a normalised version of the function's name, for debug logs.
-   */
-  @memoize
-  get name() {
-    let name = this.fn.name;
-    if (name) {
-      name = decamelize(this.fn.name, '-');
-      if (name.startsWith('exhibit-')) name = name.substring(8);
-      return name;
-    }
-    return '[anonymous]';
-  }
+function isGeneratorFunction(fn) {
+  return fn.constructor.name === 'GeneratorFunction';
 }
