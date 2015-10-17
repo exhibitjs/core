@@ -22,8 +22,6 @@ export default class Harness extends EventEmitter {
     }
     else name = '[anonymous]';
 
-    console.log('isGen', fn.constructor.name);
-
     Object.defineProperties(this, {
       fn: {value: isGeneratorFunction(fn) ? coroutine(fn) : fn},
       name: {value: name},

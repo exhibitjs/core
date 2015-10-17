@@ -16,7 +16,6 @@ const ENGINE = Symbol();
 const IMPORTATIONS = Symbol();
 
 // a global memo bank for matcher functions
-// (possibly better to make this per-engine...)
 const matchers = new Map();
 
 @autobind
