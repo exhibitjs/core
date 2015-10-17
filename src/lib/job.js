@@ -288,6 +288,25 @@ export default class Job extends EventEmitter {
   }
 
   /**
+   * Returns the closest file to the current file (checking in its dir, then the parent, etc...)
+   * that has the given basename.
+   */
+  async importClosest(basename, types) {
+    // establish array of directories to try
+    const levels = path.dirname(this.file).split(path.sep);
+    const tryDirs = [];
+    for (let i = levels.length - 1; i > 1; i--) {
+      const dir = [];
+      for (let j = 0; j < i; j++) dir[j] = levels[j];
+      dir[i] = basename;
+      tryDirs.push(dir.join(path.sep));
+    }
+
+    // try them
+    return this.importFirst(tryDirs, types);
+  }
+
+  /**
    * Make utility belt available to the builder function.
    */
   util = util
