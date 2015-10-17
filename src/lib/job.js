@@ -3,19 +3,20 @@
  * They specify what needs to be built and provide helper methods.
  */
 
-import {resolve, relative, isAbsolute, extname} from 'path';
-import {param, Optional, ArrayOf} from 'decorate-this';
-import {isString, isFunction, isArray} from 'lodash';
+import {isString, isFunction, isArray, isRegExp} from 'lodash';
+// import {param, Optional, ArrayOf} from 'decorate-this';
 import {default as util, micromatch} from './util';
 import autobind from 'autobind-decorator';
 import {EventEmitter} from 'events';
 import subdir from 'subdir';
+import path from 'path';
 
 const INBOX = Symbol();
 const ENGINE = Symbol();
 const IMPORTATIONS = Symbol();
 
 // a global memo bank for matcher functions
+// (possibly better to make this per-engine...)
 const matchers = new Map();
 
 @autobind
@@ -26,7 +27,7 @@ export default class Job extends EventEmitter {
     // we can't use a decorated `init` to check types of `inbox`, `engine`
     // etc. due to circular imports problem: https://github.com/babel/babel/issues/1150
     console.assert(engine instanceof require('./engine')); // eslint-disable-line global-require
-    console.assert(file && isAbsolute(file), 'need absolute path');
+    console.assert(file && path.isAbsolute(file), 'need absolute path');
     console.assert(base && subdir(base, file), 'path must be within base');
 
     this[ENGINE] = engine;
@@ -42,13 +43,13 @@ export default class Job extends EventEmitter {
       file         : {value: file},
       contents     : {value: contents},
       base         : {value: base},
-      ext          : {get: () => extname(file)},
-      fileRelative : {get: () => relative(base, file)},
+      ext          : {get: () => path.extname(file)},
+      fileRelative : {get: () => path.relative(base, file)},
     });
   }
 
   /**
-   * Standardised method for builders to use to see if the current job matches the given matcher.
+   * Standard method for builders to use to check the current job against a given matcher.
    *
    * A 'matcher' could be anything an end user might have set as an option: a
    * glob, or an array of globs, or just a function that returns true or false.
@@ -58,17 +59,17 @@ export default class Job extends EventEmitter {
     // allow plugins to do eg: matches(opts.skip) when .skip is not set
     if (!matcher) return false;
 
-    // if it's a custom matcher function, just use it
-    if (isFunction(matcher)) return matcher(this.fileRelative);
-
     // make a micromatch filter function (and memoize it)
     if (!matchers.has(matcher)) {
-      if (isString(matcher) || (isArray(matcher) && matcher.every(isString))) {
+      if (
+        isString(matcher) || (isArray(matcher) && matcher.every(isString)) ||
+        isRegExp(matcher) || isFunction(matcher)
+      ) {
         matchers.set(matcher, micromatch.filter(matcher));
       }
       else {
         throw new TypeError(
-          'matches() expects a function, glob string, or an array of glob strings'
+          'Exhibit: matches() expects a function, string, array of strings, or regular expression'
         );
       }
     }
@@ -89,30 +90,30 @@ export default class Job extends EventEmitter {
    * Synchronously imports a file from INSIDE the in-transit project source.
    * Returns `{file, contents}`, where `file` is a resolved absolute path.
    */
-  importInternalFile(importPath) {
-    importPath = resolve(this.base, importPath);
-    if (!subdir(this.base, importPath)) {
+  importInternalFile(importFile) {
+    importFile = path.resolve(this.base, importFile);
+    if (!subdir(this.base, importFile)) {
       throw new Error('importInternalFile cannot import a file outside the base directory');
     }
 
-    this[IMPORTATIONS].add(this.file, importPath);
+    this[IMPORTATIONS].add(this.file, importFile);
 
-    const importContents = this[INBOX].read(importPath);
+    const importContents = this[INBOX].read(importFile);
 
     if (importContents) {
       return Object.defineProperties({}, {
-        file: {value: importPath},
+        file: {value: importFile},
         contents: {value: importContents},
       });
     }
 
-    if (false && this[INBOX].isDir(importPath)) { // TODO!!!
-      const error = new Error('Is a directory: ' + importPath);
+    if (false && this[INBOX].isDir(importFile)) { // TODO!!!
+      const error = new Error('Is a directory: ' + importFile);
       error.code = 'EISDIR';
       throw error;
     }
     else {
-      const error = new Error('Not found: ' + importPath);
+      const error = new Error('Not found: ' + importFile);
       error.code = 'ENOENT';
       throw error;
     }
@@ -126,11 +127,11 @@ export default class Job extends EventEmitter {
    */
   // @param(String)
   // @param(Optional(ArrayOf(String)))
-  async importExternalFile(importPath, types) {
-    // normalize the path...
-    // if it 'looks' internal, make it relative, otherwise keep it absolute
-    let targetPath = resolve(this.base, importPath);
-    if (subdir(this.base, targetPath)) targetPath = relative(this.base, targetPath);
+  async importExternalFile(file, types) {
+    // normalize the file path: if it looks internal, make it relative,
+    // otherwise keep it absolute
+    file = path.resolve(this.base, file);
+    if (subdir(this.base, file)) file = path.relative(this.base, file);
 
     // allow types to be passed as an array or string
     if (isString(types)) types = [types];
@@ -140,7 +141,7 @@ export default class Job extends EventEmitter {
 
     // try each importer in turn until a result is found
     for (const importer of this[ENGINE].importers) {
-      const result = await importer.execute(targetPath, types);
+      const result = await importer.execute(file, types);
 
       if (result) {
         if (result.accessed) {
@@ -156,45 +157,54 @@ export default class Job extends EventEmitter {
         }
 
         // record all the paths the importer tried to access
-        for (const accessedPath of result.accessed) {
-          this[IMPORTATIONS].add(this.file, resolve(this.base, accessedPath));
+        for (const accessedFile of result.accessed) {
+          this[IMPORTATIONS].add(this.file, path.resolve(this.base, accessedFile));
         }
 
         // if this was a successful import, return it
         if (result.contents || result.file) {
-          console.assert(Buffer.isBuffer(result.contents), 'imported contents should be a buffer');
-          console.assert(isString(result.file) && isAbsolute(result.file), 'imported result should include an absolute resolved file path');
+          console.assert(
+            Buffer.isBuffer(result.contents),
+            'imported contents should be a buffer'
+          );
+          console.assert(
+            isString(result.file) && path.isAbsolute(result.file),
+            'imported result should include an absolute resolved file path'
+          );
 
-          return {contents: result.contents, file: result.file};
+          return {
+            contents: result.contents,
+            file: result.file,
+          };
         }
       }
     }
 
     // we still haven't found anything.
     // make a final error to throw back to the builder
-    const error = new Error('Could not find external import: ' + targetPath);
+    const error = new Error('Could not find external import: ' + file);
     error.code = 'ENOENT';
     throw error;
   }
 
   /**
-   * Multi-path version of #importInternalFile().
+   * Multi-path version of #importInternalFile(). Tries all provided file paths
+   * in turn and returns the first that matches.
    */
   // @param(ArrayOf(String))
-  importFirstInternal(paths) {
+  importFirstInternal(files) {
     let lastError;
 
-    for (const path of paths) {
+    for (const file of files) {
       let result;
       try {
-        result = this.importInternalFile(path);
+        result = this.importInternalFile(file);
       }
       catch (error) {
         if (error.code !== 'ENOENT' && error.code !== 'EISDIR') throw error;
         lastError = error;
         continue;
       }
-
       return result;
     }
 
@@ -204,15 +214,15 @@ export default class Job extends EventEmitter {
   /**
    * Multi-path version of #importExternalFile().
    */
-  @param(ArrayOf(String))
-  @param(Optional(ArrayOf(String)))
-  async importFirstExternal(paths, types) {
+  // @param(ArrayOf(String))
+  // @param(Optional(ArrayOf(String)))
+  async importFirstExternal(files, types) {
     let lastError;
 
-    for (const path of paths) {
+    for (const file of files) {
       let result;
       try {
-        result = await this.importExternalFile(path, types);
+        result = await this.importExternalFile(file, types);
       }
       catch (error) {
         if (error.code !== 'ENOENT' && error.code !== 'EISDIR') throw error;
@@ -234,13 +244,13 @@ export default class Job extends EventEmitter {
    */
   // @param(String)
   // @param(Optional(ArrayOf(String)))
-  async importFile(path, types) {
-    console.assert(isString(path) && (types == null || isArray(types)));
+  async importFile(file, types) {
+    console.assert(isString(file) && (types == null || isArray(types)));
 
-    path = resolve(this.base, path);
-    if (subdir(this.base, path)) {
+    file = path.resolve(this.base, file);
+    if (subdir(this.base, file)) {
       try {
-        return this.importInternalFile(path);
+        return this.importInternalFile(file);
       }
       catch (error) {
         if (error.code !== 'ENOENT' && error.code !== 'EISDIR') {
@@ -249,7 +259,7 @@ export default class Job extends EventEmitter {
       }
     }
 
-    return this.importExternalFile(path, types);
+    return this.importExternalFile(file, types);
   }
 
   /**
@@ -257,13 +267,13 @@ export default class Job extends EventEmitter {
    */
   // @param(ArrayOf(String))
   // @param(Optional(ArrayOf(String)))
-  async importFirst(paths, types) {
+  async importFirst(files, types) {
     let lastError;
 
-    for (const path of paths) {
+    for (const file of files) {
       let result;
       try {
-        result = await this.importFile(path, types);
+        result = await this.importFile(file, types);
       }
       catch (error) {
         if (error.code !== 'ENOENT' && error.code !== 'EISDIR') throw error;
