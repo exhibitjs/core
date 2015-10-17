@@ -1,7 +1,7 @@
 {
   "name": "exhibit-core",
   "description": "The engine used by Exhibit.js",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "author": "Callum Locke",
   "dependencies": {
     "autobind-decorator": "^1.3.2",
